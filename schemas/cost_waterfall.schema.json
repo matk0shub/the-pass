@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/cost_waterfall.schema.json",
+  "title": "CostWaterfall",
+  "type": "object",
+  "required": ["id", "run_receipt", "created_at", "gross_pnl", "costs", "net_pnl", "assumptions"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "run_receipt": { "type": "string" },
+    "created_at": { "type": "string" },
+    "gross_pnl": {},
+    "costs": { "type": "object" },
+    "net_pnl": {},
+    "assumptions": { "type": "object" },
+    "stress": { "type": "object" },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

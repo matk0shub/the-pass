@@ -5,7 +5,7 @@ owner: ""
 created_at: YYYY-MM-DD
 
 market:
-  asset_class: crypto_perp # crypto_perp|futures|prediction_market
+  asset_class: "" # crypto_perp|futures|prediction_market|equity|option|fx|rates|credit|commodity|other
   venues: []
   instruments: []
   timeframes: []

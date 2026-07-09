@@ -1,6 +1,6 @@
 # ADR-0005: Risk Governance
 
-Status: proposed
+Status: accepted
 Date: 2026-07-09
 Owner: risk_officer
 

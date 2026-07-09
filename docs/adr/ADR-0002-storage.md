@@ -1,6 +1,6 @@
 # ADR-0002: Storage
 
-Status: proposed
+Status: accepted
 Date: 2026-07-09
 Owner: data_steward
 

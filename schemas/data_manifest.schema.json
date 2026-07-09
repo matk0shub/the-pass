@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/data_manifest.schema.json",
+  "title": "DataManifest",
+  "type": "object",
+  "required": ["id", "dataset_name", "created_at", "source", "coverage", "schema", "quality", "fingerprint"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "dataset_name": { "type": "string" },
+    "created_at": { "type": "string" },
+    "owner": { "type": "string" },
+    "source": { "type": "object" },
+    "coverage": { "type": "object" },
+    "schema": { "type": "object" },
+    "quality": { "type": "object" },
+    "fingerprint": {
+      "type": "object",
+      "required": ["method", "value"],
+      "properties": {
+        "method": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

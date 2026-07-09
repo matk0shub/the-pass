@@ -1,43 +1,47 @@
 # ADR-0003: Engine
 
-Status: proposed
+Status: accepted
 Date: 2026-07-09
 Owner: automation_engineer
 
 ## Context
 
-The core asset is not a backtesting package. It is the evidence ledger, data manifest,
-cost model, audit workflow, and promotion gates.
+The core asset is not a backtesting package. It is the plugin workflow, evidence ledger,
+data manifest, cost model, audit workflow, and promotion gates. The Pass must be able to
+wrap many engines instead of becoming locked to one.
 
 ## Decision
 
-Use pandas/NumPy for first screening, optional vectorbt for large parameter sweeps, and a
-small in-house event simulator for MVP execution realism. Evaluate NautilusTrader only
-after the canonical event model, paper broker, risk gates, and reconciliation requirements
-are stable.
+The Pass core is engine-neutral. The plugin owns artifact contracts and gates. Asset-class
+or strategy adapters may use pandas/NumPy, vectorbt, Backtrader, NautilusTrader,
+QuantConnect/LEAN, custom simulators, broker paper APIs, or other engines only if they emit
+the required artifacts.
+
+Default local examples may use pandas/NumPy and a lightweight simulator, but those are
+examples, not product identity.
 
 ## Alternatives Considered
 
-- NautilusTrader immediately: rejected because adapter complexity is premature before the
-  research event model is fixed.
-- Backtrader: rejected as default because it is too bar-centric for modern crypto/funding
-  and orderbook realism.
-- QuantConnect/LEAN local runtime: rejected for MVP, but useful as an architectural
-  reference for Alpha -> Portfolio -> Risk -> Execution separation.
+- Pick one engine as mandatory: rejected because The Pass should judge multiple trading
+  stacks.
+- Build a full engine first: rejected because the plugin can create value by validating
+  evidence before engine integration is mature.
+- Ignore engine semantics: rejected because the artifact contract must still capture data,
+  cost, fill, latency, and risk assumptions.
 
 ## Consequences
 
-- Faster first experiments.
-- Fill and cost assumptions remain explicit.
-- Some engine work may be replaced later if two or more strategy families need shared
-  live/backtest semantics.
+- The public repo stays broadly applicable.
+- Each adapter must document what its engine can and cannot prove.
+- Promotion gates can compare outputs across engines when needed.
 
 ## Validation
 
-The first simulator must support conservative taker fills, forbidden mid fills for
-promotion, configurable slippage/fees, partial/rejected fills, and timestamp separation.
+Every engine adapter must produce data manifests, receipts, metrics, cost waterfalls,
+verdicts, and explicit execution assumptions. Any adapter that cannot do this stays
+diagnostic-only.
 
 ## Review Trigger
 
-Revisit when at least two strategy families require shared order lifecycle or portfolio
-accounting logic, or when a paper-surviving candidate needs micro-live reconciliation.
+Revisit if two or more adapters need shared order lifecycle, portfolio accounting, or
+paper/live reconciliation code in core.

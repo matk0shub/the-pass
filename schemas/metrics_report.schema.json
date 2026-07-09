@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/metrics_report.schema.json",
+  "title": "MetricsReport",
+  "type": "object",
+  "required": ["id", "run_receipt", "created_at", "sample", "gross_metrics", "net_metrics", "robustness"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "run_receipt": { "type": "string" },
+    "created_at": { "type": "string" },
+    "sample": { "type": "object" },
+    "gross_metrics": { "type": "object" },
+    "net_metrics": { "type": "object" },
+    "robustness": { "type": "object" },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

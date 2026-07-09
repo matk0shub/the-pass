@@ -1,0 +1,37 @@
+{
+  "name": "the-pass",
+  "version": "0.1.0",
+  "description": "A public plugin-first review station for trading strategy research: specs, evidence, gates, audits, and receipts before paper or live approval.",
+  "author": {
+    "name": "The Pass contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "trading",
+    "strategy-research",
+    "backtesting",
+    "risk",
+    "audit",
+    "automation",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "The Pass",
+    "shortDescription": "Trading strategy research gates, audits, and receipts.",
+    "longDescription": "The Pass is a public plugin-first workflow for turning trading ideas into structured hypotheses, evidence packages, independent reviews, and gate-based decisions before paper or live approval.",
+    "developerName": "The Pass contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Automation"
+    ],
+    "defaultPrompt": [
+      "Set up this repo for The Pass.",
+      "Turn this trading idea into a StrategySpec.",
+      "Taste this backtest package for promotion risks."
+    ],
+    "brandColor": "#111827"
+  }
+}

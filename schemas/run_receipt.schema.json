@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/run_receipt.schema.json",
+  "title": "RunReceipt",
+  "type": "object",
+  "required": ["id", "created_at", "strategy_spec", "code_version", "data_manifest", "outputs", "safety"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string" },
+    "owner": { "type": "string" },
+    "strategy_spec": { "type": "string" },
+    "code_version": { "type": "string" },
+    "data_manifest": { "type": "string" },
+    "command": { "type": "string" },
+    "config_hash": { "type": "string" },
+    "random_seed": {},
+    "inputs": { "type": "object" },
+    "outputs": { "type": "object" },
+    "safety": {
+      "type": "object",
+      "required": ["live_trading_enabled", "real_order_path_available", "credentials_available"],
+      "properties": {
+        "live_trading_enabled": { "type": "boolean" },
+        "real_order_path_available": { "type": "boolean" },
+        "credentials_available": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": true
+}

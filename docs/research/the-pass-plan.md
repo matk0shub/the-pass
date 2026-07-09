@@ -498,10 +498,13 @@ promotion_gates:
 
 ## 9. Gate-based roadmap
 
-### Phase 0: Research operating system
+### Phase 0: Public plugin and research operating system
 
 Build:
 
+- `.codex-plugin/plugin.json`,
+- plugin skills for `mise`, `research`, `spec`, `screen`, `backtest`, `taste`, `refire`,
+  `simmer`, `paper`, `plate` and `receipts`,
 - `research/sources.yaml`: curated bibliography with status.
 - `templates/strategy_spec.yaml`.
 - `templates/research_brief.md`.
@@ -511,6 +514,8 @@ Build:
 
 Gate:
 
+- Plugin manifest validates.
+- Public-release checklist passes.
 - 20 core sources reviewed into structured notes.
 - At least 5 strategy ideas converted to falsifiable `StrategySpec`.
 - No code for live trading.
@@ -520,12 +525,13 @@ Kill:
 - If sources cannot be tied to testable system requirements, stop and rewrite research
   method.
 
-### Phase 1: Data and manifest foundation
+### Phase 1: Adapter and manifest foundation
 
 Build:
 
-- instrument registry,
-- raw immutable data store,
+- asset-class adapter contract,
+- instrument registry schema,
+- raw immutable data store policy,
 - normalized event schema,
 - dataset manifest generator,
 - data quality report,
@@ -533,9 +539,8 @@ Build:
 
 Gate:
 
-- One crypto venue and one independent crypto source can be ingested/replayed.
-- Futures provider/licensing ADR accepted, or a small licensed futures sample can be
-  ingested/replayed if already available.
+- At least one adapter can ingest or validate a public-safe sample.
+- At least one independent cross-check path is documented for that adapter.
 - Dataset manifest catches missing intervals, duplicates, timestamp disorder and outliers.
 - Same raw data produces identical features twice.
 
@@ -801,17 +806,18 @@ Pokud tento poradek porusime, agenti jen zrychli p-hacking.
 
 Tyden 1:
 
+- Dokoncit plugin scaffold a public-ready repo metadata.
 - Zalozit `research/sources.yaml`, sablony a StrategySpec.
 - Zpracovat prvnich 20 zdroju do strukturovanych notes.
-- Vybrat 3 baseline strategie: futures/crypto TSMOM, crypto funding carry, intraday
-  reversal/momentum.
+- Sepsat adapter contract tak, aby fungoval pro crypto, futures, prediction markets a dalsi
+  asset classes.
 
 Tyden 2:
 
 - Navrhnout canonical event schema.
 - Postavit data manifest generator.
-- Nacist jednu crypto venue historii a jeden nezavisly crypto cross-check sample.
-- Sepsat futures data/provider ADR; nacist futures sample jen pokud je licencne cisty.
+- Nacist nebo namodelovat public-safe sample pro prvni adapter.
+- Sepsat provider ADR pro kazdy adapter, ktery ma jit za diagnostic mode.
 - Vytvorit data quality report.
 
 Tyden 3:
@@ -837,12 +843,14 @@ Do 90 dnu by system mel mit:
 - 50+ zdroju ve structured corpus,
 - 10+ formalnich StrategySpec,
 - 3-5 baseline families,
+- funkcni public plugin workflow,
+- validatory pro artifact kontrakty,
 - canonical data/event schema,
 - reproducible experiment ledger,
 - cost waterfall,
 - walk-forward/purged validation,
 - PBO/DSR tooling aspon pro relevantni use-cases,
-- accepted futures provider/licensing ADR and optional licensed futures sample,
+- adapter/provider ADR pro kazdou asset class, ktera jde za diagnostic mode,
 - paper trading pro 1-2 nejsilnejsi kandidaty,
 - risk dashboard pro paper,
 - zadny live trading bez zvlastniho schvaleni.
@@ -860,11 +868,13 @@ storage, data provider, promotion gates, live-capable boundary ani risk governan
 
 Adresare a soubory:
 
-- `research/decisions/ADR-0001-mvp-scope.md`
-- `research/decisions/ADR-0002-storage.md`
-- `research/decisions/ADR-0003-engine.md`
-- `research/decisions/ADR-0004-data-providers.md`
-- `research/decisions/ADR-0005-risk-governance.md`
+- `docs/adr/ADR-0001-product-scope.md`
+- `docs/adr/ADR-0002-storage.md`
+- `docs/adr/ADR-0003-engine.md`
+- `docs/adr/ADR-0004-data-providers.md`
+- `docs/adr/ADR-0005-risk-governance.md`
+- `docs/adr/ADR-0006-plugin-and-public-distribution.md`
+- `docs/adr/ADR-0007-artifact-schemas.md`
 
 ADR sablona:
 
@@ -912,44 +922,46 @@ Acceptance criteria:
 
 ### 19.2 MVP scope
 
-Rozhodnuti: MVP je The Pass v0, research-only review station, ne trading bot. Cilem je
-dokazat, ze system umi spolehlive zabijet spatne strategie a reprodukovat dobre
-experimenty.
+Rozhodnuti: MVP je The Pass v0, public plugin-first review station, ne trading bot a ne
+jedna konkretni strategie. Cilem je dodat workflow, artefaktove kontrakty, gate model a
+bezpecnostni hranice, ktere se daji pouzit pro crypto, futures, prediction markets,
+equities, FX, options i dalsi asset classes.
 
-Primary MVP:
+Core MVP:
 
-- Market: crypto perpetual futures.
-- Venues: Binance USD-M public data first, Bybit public data as cross-venue check.
-- Instruments: BTCUSDT, ETHUSDT, SOLUSDT. XRPUSDT only as extra liquidity/regime check.
-- Horizons: 1m, 5m, 15m, 1h, 4h.
-- Strategy families: time-series momentum, breakout/Donchian/ORB/NR7, funding/carry,
-  intraday reversal/momentum after liquidity shocks.
-- Mode: historical research and paper/replay only.
+- Plugin manifest and skills.
+- ADR process and public repo policy.
+- `StrategySpec`, source note, data manifest, run receipt, metrics report, cost waterfall
+  and verdict report contracts.
+- Asset-class adapter contract.
+- Gate workflow: research -> screen -> backtest -> taste -> refire/simmer -> paper -> plate.
+- Safety boundary: no secrets, no real order path, no live-capable code without separate ADR.
 
-Secondary MVP:
+Adapter examples, not product scope:
 
-- Market: listed futures.
-- Data: Databento evaluation for CME/CBOT/NYMEX/COMEX/ICE/Eurex intraday or daily data.
-- Scope: trend/carry baselines only; no intraday execution strategy until data licensing and
-  contract-roll policy are solved.
+- Crypto perps: Binance/Bybit public scaffolding, Tardis.dev/Kaiko for audited replay.
+- Listed futures: Databento or licensed equivalent plus roll/calendar policy.
+- Prediction markets: Polymarket/Kalshi market data plus settlement semantics and fee/depth
+  checks.
+- Equities/options/FX/rates/credit: provider and market-structure ADR before promotion.
 
 Explicitly out of MVP:
 
 - Live trading.
-- Options.
-- DeFi execution.
-- News/NLP-driven strategies.
-- Market making with real quotes.
-- Cross-exchange arbitrage requiring transfers, margin movement, or borrow.
-- Any strategy whose edge depends on sub-100ms latency.
+- Real order placement.
+- Broker/exchange credentials.
+- Private data or paid data redistribution.
+- A hard dependency on one backtesting engine.
+- Treating public examples as proof of edge.
 
 MVP is complete only when:
 
-- 3 strategy families have complete `StrategySpec` files.
-- 2 venues or 2 independent data sources exist for at least one crypto instrument.
+- Plugin skills exist and map to the planned workflow.
+- Core templates have machine-validatable schemas or schema-ready examples.
+- At least one public-safe example can move from research note to verdict without live access.
 - Every run creates a data manifest, run receipt, metrics report, cost waterfall and verdict.
 - At least one intentionally bad/random baseline is killed by the framework.
-- At least one plausible baseline survives to paper-candidate status without live approval.
+- Public-release checklist passes.
 
 ### 19.3 Data provider matrix
 
@@ -961,9 +973,9 @@ independently archived source before paper promotion.
 | Market | Default provider | Backup / paid provider | Required fields | Use | Blocker |
 | --- | --- | --- | --- | --- | --- |
 | Crypto spot | Binance public WS/REST | Kaiko, Tardis.dev | trades, klines, top book/depth | reference prices, volatility, spot leg | no timestamp/sequence audit |
-| Crypto perps | Binance USD-M public REST/WS | Bybit public, Tardis.dev, Kaiko | trades, depth, mark, index, funding, open interest, liquidations if available | MVP primary | missing funding/OI for held positions |
+| Crypto perps | Binance USD-M public REST/WS | Bybit public, Tardis.dev, Kaiko | trades, depth, mark, index, funding, open interest, liquidations if available | adapter example | missing funding/OI for held positions |
 | Crypto cross-venue | Binance + Bybit | Tardis.dev normalized replay | venue-specific trades/depth/funding | venue robustness, not arbitrage | symbol/contract mismatch |
-| Futures | none free for final verdict | Databento | trades, MBP-1/10, MBO where needed, OHLCV, instrument metadata | secondary MVP | licensing, roll policy, fees |
+| Futures | none free for final verdict | Databento | trades, MBP-1/10, MBO where needed, OHLCV, instrument metadata | adapter example | licensing, roll policy, fees |
 | Prediction markets | Polymarket Gamma/Data/CLOB public | archived raw store, Allium/other warehouse if licensed | market metadata, books, trades, settlement, fees | later adapter | resolution semantics not verified |
 | Regulated event markets | Kalshi public market data | vendor/warehouse for history | events, markets, orderbook, settlement | reference/overlap research | API/license constraints |
 | Macro/session calendar | exchange calendars | paid calendar vendor | holidays, sessions, contract expiry | futures validation | incorrect session/roll calendar |
@@ -981,11 +993,10 @@ Provider acceptance checklist:
 
 Initial decision:
 
-- Use Binance public data to build ingestion and manifests.
-- Use Bybit public data to test venue-specific assumptions.
-- Trial Tardis.dev for crypto tick/depth/funding replay before any paper promotion.
-- Trial Databento for futures only after the crypto MVP proves the ledger/backtest/audit loop.
-- Do not buy broad institutional data until the framework kills bad baselines correctly.
+- Core does not choose a single default provider.
+- Adapter examples may use public/free data for scaffolding.
+- Any adapter that wants paper promotion must pass provider acceptance and licensing review.
+- Do not buy broad institutional data until an adapter has a concrete validation need.
 
 ### 19.4 Build vs buy
 

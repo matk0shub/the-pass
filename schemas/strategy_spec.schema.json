@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/strategy_spec.schema.json",
+  "title": "StrategySpec",
+  "type": "object",
+  "required": ["id", "name", "status", "market", "edge", "data", "signal", "execution", "risk", "validation", "gates", "done_when", "kill_when"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "research", "killed", "paper_candidate", "paper", "risk_review", "live_candidate"]
+    },
+    "owner": { "type": "string" },
+    "created_at": { "type": "string" },
+    "market": {
+      "type": "object",
+      "required": ["asset_class", "venues", "instruments", "timeframes"],
+      "properties": {
+        "asset_class": { "type": "string" },
+        "venues": { "type": "array", "items": { "type": "string" } },
+        "instruments": { "type": "array", "items": { "type": "string" } },
+        "timeframes": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "edge": { "type": "object" },
+    "data": { "type": "object" },
+    "signal": { "type": "object" },
+    "execution": { "type": "object" },
+    "risk": { "type": "object" },
+    "validation": { "type": "object" },
+    "gates": { "type": "object" },
+    "done_when": { "type": "array", "items": { "type": "string" } },
+    "kill_when": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": true
+}

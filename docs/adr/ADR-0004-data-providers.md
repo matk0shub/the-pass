@@ -1,21 +1,30 @@
 # ADR-0004: Data Providers
 
-Status: proposed
+Status: accepted
 Date: 2026-07-09
 Owner: data_steward
 
 ## Context
 
-Free/public data is useful for scaffolding, but final verdicts that depend on queue,
-depth, funding, open interest, or fills need audited and preferably independently archived
-data.
+The Pass is public and market-agnostic. It must not hardcode a default provider as if one
+market were the product. Provider choices belong to adapters and strategy specs, while the
+core enforces provider acceptance and evidence requirements.
 
 ## Decision
 
-Start with Binance USD-M public REST/WS for scaffolding and Bybit public data for a
-cross-venue assumption check. Trial Tardis.dev or Kaiko before any crypto strategy reaches
-paper promotion. Trial Databento for listed futures only after the crypto MVP proves the
-ledger/backtest/audit loop.
+The core ships provider acceptance rules, not provider lock-in. Public/free data may be
+used for scaffolding. Any candidate that depends on queue, depth, funding, open interest,
+corporate actions, settlement semantics, or intraday fills must be retested on licensed,
+archived, or independently verifiable data before paper promotion.
+
+Provider examples:
+
+- Crypto: Binance, Bybit, Tardis.dev, Kaiko.
+- Futures: Databento or another licensed historical provider.
+- Prediction markets: Polymarket/Kalshi public APIs plus archived raw store or licensed
+  warehouse.
+- Equities/options/FX/rates/credit: adapter-specific provider ADR required before final
+  verdicts.
 
 Acceptance checklist:
 
@@ -30,16 +39,16 @@ Acceptance checklist:
 
 ## Alternatives Considered
 
-- Buy broad institutional data immediately: rejected until the framework proves it can kill
-  bad baselines.
-- Use exchange public data for final verdicts: rejected for strategies whose edge depends
-  on depth, queue, funding, or execution realism.
+- Declare a single default provider: rejected because the framework must cover many markets.
+- Buy broad institutional data immediately: rejected until an adapter has a concrete
+  validation need.
+- Use public data for final verdicts in execution-sensitive strategies: rejected.
 
 ## Consequences
 
-- Low-cost start.
-- Provider/license work remains explicit.
-- Surviving candidates cannot be promoted from public-only data.
+- Public repo can document provider contracts without redistributing data.
+- Adapter authors must solve licensing and timestamp semantics explicitly.
+- Surviving candidates cannot hide weak data under generic backtest metrics.
 
 ## Validation
 
@@ -48,5 +57,4 @@ licensing notes, deterministic replay proof, and cross-source comparison.
 
 ## Review Trigger
 
-Revisit before any paid provider purchase, before futures research leaves exploratory mode,
-or when a candidate needs paper promotion.
+Revisit before adding a provider-specific adapter as first-class core functionality.

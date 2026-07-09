@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/source_note.schema.json",
+  "title": "SourceNote",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "priority",
+    "status",
+    "claim",
+    "evidence",
+    "limitations",
+    "required_tests"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "type": {
+      "type": "string",
+      "enum": ["academic", "book", "interview", "vendor-doc", "strategy-review", "blog", "code"]
+    },
+    "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+    "status": {
+      "type": "string",
+      "enum": ["unread", "skimmed", "reviewed", "implemented", "rejected"]
+    },
+    "url": { "type": "string" },
+    "bibliography": { "type": "string" },
+    "claim": { "type": "string" },
+    "evidence": { "type": "string" },
+    "limitations": { "type": "string" },
+    "market_applicability": { "type": "array", "items": { "type": "string" } },
+    "tradable_implication": { "type": "string" },
+    "required_tests": { "type": "array", "items": { "type": "string" } },
+    "failure_modes": { "type": "array", "items": { "type": "string" } },
+    "system_requirements": { "type": "array", "items": { "type": "string" } },
+    "notes_owner": { "type": "string" },
+    "review_date": { "type": "string" }
+  },
+  "additionalProperties": true
+}
