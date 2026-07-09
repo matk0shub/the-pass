@@ -1,0 +1,18 @@
+{
+  "id": "synthetic-random-baseline-fixture",
+  "type": "code",
+  "priority": "P2",
+  "status": "reviewed",
+  "url": "",
+  "bibliography": "The Pass synthetic random baseline fixture",
+  "claim": "A random-signal candidate should be killed even when its artifact package is complete.",
+  "evidence": "The fixture defines deterministic random directions with negative net results after illustrative costs.",
+  "limitations": "Cannot support a trading claim, paper promotion, or live approval.",
+  "market_applicability": ["synthetic"],
+  "tradable_implication": "None.",
+  "required_tests": ["Artifact package validates", "Verdict remains kill"],
+  "failure_modes": ["Random baseline accidentally promoted", "Artifact completeness mistaken for edge evidence"],
+  "system_requirements": ["Adapter mode must stay diagnostic", "Safety flags must remain false"],
+  "notes_owner": "the-pass",
+  "review_date": "2026-07-09"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "synthetic-random-baseline-run-v0",
+  "created_at": "2026-07-09T00:00:00Z",
+  "owner": "the-pass",
+  "strategy_spec": "strategy_spec.json",
+  "code_version": "example-fixture",
+  "data_manifest": "data_manifest.json",
+  "command": "the-pass validate-package examples/synthetic-random-baseline/package",
+  "config_hash": "synthetic-random-fixture",
+  "random_seed": 7,
+  "inputs": {
+    "artifacts": ["adapter.json", "source_note.json", "strategy_spec.json", "data_manifest.json"]
+  },
+  "outputs": {
+    "metrics_report": "metrics_report.json",
+    "cost_waterfall": "cost_waterfall.json",
+    "verdict_report": "verdict_report.json",
+    "logs": []
+  },
+  "safety": {
+    "live_trading_enabled": false,
+    "real_order_path_available": false,
+    "credentials_available": false
+  },
+  "notes": "Public-safe negative-control fixture run; no trading claim."
+}

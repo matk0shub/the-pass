@@ -1,0 +1,29 @@
+{
+  "id": "synthetic-random-baseline-costs-v0",
+  "run_receipt": "run_receipt.json",
+  "created_at": "2026-07-09T00:00:00Z",
+  "gross_pnl": 0.005,
+  "costs": {
+    "fees": 0.036,
+    "spread": 0.048,
+    "slippage": 0.036,
+    "funding": 0,
+    "borrow": 0,
+    "roll": 0,
+    "rejects_or_missed_fills": 0
+  },
+  "net_pnl": -0.115,
+  "assumptions": {
+    "fee_model": "illustrative fixed drag",
+    "fill_model": "none",
+    "latency_model": "none",
+    "depth_model": "none"
+  },
+  "stress": {
+    "fees_x_1_5": -0.133,
+    "slippage_x_2_0": -0.151,
+    "latency_x_2_0": -0.115,
+    "depth_x_0_5": -0.115
+  },
+  "limitations": ["No real execution", "Costs are illustrative but intentionally pessimistic"]
+}

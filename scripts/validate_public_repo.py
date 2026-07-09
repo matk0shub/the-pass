@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -30,6 +31,10 @@ IGNORED_DIRS = {
     "venv",
 }
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+EXAMPLE_PACKAGES = {
+    "synthetic-breakout": {"verdict": "blocked", "adapter_mode": "diagnostic"},
+    "synthetic-random-baseline": {"verdict": "kill", "adapter_mode": "diagnostic"},
+}
 
 
 def fail(message: str) -> None:
@@ -54,6 +59,10 @@ def validate_json(path: Path) -> None:
         json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         fail(f"invalid JSON in {path.relative_to(ROOT)}: {exc}")
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def validate_plugin_manifest() -> None:
@@ -137,8 +146,7 @@ def validate_schemas() -> None:
         validate_json(path)
 
 
-def validate_example_package() -> None:
-    package_dir = ROOT / "examples" / "synthetic-breakout" / "package"
+def validate_example_packages() -> None:
     required = {
         "adapter.json",
         "source_note.json",
@@ -149,32 +157,51 @@ def validate_example_package() -> None:
         "cost_waterfall.json",
         "verdict_report.json",
     }
-    if not package_dir.exists():
-        fail("missing examples/synthetic-breakout/package")
-    present = {path.name for path in package_dir.glob("*.json")}
-    missing = required - present
-    if missing:
-        fail(f"synthetic example missing artifacts: {', '.join(sorted(missing))}")
-    for name in sorted(required):
-        validate_json(package_dir / name)
+    for example_name, expected in EXAMPLE_PACKAGES.items():
+        package_dir = ROOT / "examples" / example_name / "package"
+        if not package_dir.exists():
+            fail(f"missing examples/{example_name}/package")
+        present = {path.name for path in package_dir.glob("*.json")}
+        missing = required - present
+        if missing:
+            fail(f"{example_name} example missing artifacts: {', '.join(sorted(missing))}")
+        for name in sorted(required):
+            validate_json(package_dir / name)
 
-    adapter = json.loads((package_dir / "adapter.json").read_text(encoding="utf-8"))
-    if adapter.get("mode") != "diagnostic":
-        fail("synthetic example adapter must stay diagnostic")
-    adapter_safety = adapter.get("safety") or {}
-    for field in ("live_trading_enabled", "real_order_path_available", "credentials_required"):
-        if adapter_safety.get(field) is not False:
-            fail(f"synthetic adapter safety.{field} must be false")
+        adapter = json.loads((package_dir / "adapter.json").read_text(encoding="utf-8"))
+        if adapter.get("mode") != expected["adapter_mode"]:
+            fail(f"{example_name} adapter must stay {expected['adapter_mode']}")
+        adapter_safety = adapter.get("safety") or {}
+        for field in ("live_trading_enabled", "real_order_path_available", "credentials_required"):
+            if adapter_safety.get(field) is not False:
+                fail(f"{example_name} adapter safety.{field} must be false")
 
-    receipt = json.loads((package_dir / "run_receipt.json").read_text(encoding="utf-8"))
-    receipt_safety = receipt.get("safety") or {}
-    for field in ("live_trading_enabled", "real_order_path_available", "credentials_available"):
-        if receipt_safety.get(field) is not False:
-            fail(f"synthetic run receipt safety.{field} must be false")
+        receipt = json.loads((package_dir / "run_receipt.json").read_text(encoding="utf-8"))
+        receipt_safety = receipt.get("safety") or {}
+        for field in ("live_trading_enabled", "real_order_path_available", "credentials_available"):
+            if receipt_safety.get(field) is not False:
+                fail(f"{example_name} run receipt safety.{field} must be false")
 
-    verdict = json.loads((package_dir / "verdict_report.json").read_text(encoding="utf-8"))
-    if verdict.get("verdict") != "blocked":
-        fail("synthetic example verdict must stay blocked")
+        manifest = json.loads((package_dir / "data_manifest.json").read_text(encoding="utf-8"))
+        source = manifest.get("source") or {}
+        raw_path = source.get("raw_path")
+        if raw_path:
+            data_path = (package_dir / raw_path).resolve()
+            try:
+                data_path.relative_to(ROOT)
+            except ValueError:
+                fail(f"{example_name} raw data path escapes repo")
+            if not data_path.exists():
+                fail(f"{example_name} raw data path is missing: {raw_path}")
+            fingerprint = manifest.get("fingerprint") or {}
+            if fingerprint.get("method") == "sha256" and fingerprint.get("value") != sha256_file(data_path):
+                fail(f"{example_name} data fingerprint does not match {raw_path}")
+
+        verdict = json.loads((package_dir / "verdict_report.json").read_text(encoding="utf-8"))
+        if verdict.get("verdict") != expected["verdict"]:
+            fail(f"{example_name} verdict must stay {expected['verdict']}")
+        if expected["verdict"] == "kill" and not verdict.get("kill_reason"):
+            fail(f"{example_name} killed example must keep kill_reason")
 
 
 def validate_markdown_links() -> None:
@@ -221,7 +248,7 @@ def main() -> int:
     validate_python_package()
     validate_skills()
     validate_schemas()
-    validate_example_package()
+    validate_example_packages()
     validate_markdown_links()
     validate_public_safety()
     print("public repo validation passed")

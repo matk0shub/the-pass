@@ -17,14 +17,18 @@ from the_pass.validator import validate_artifact, validate_package
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_PACKAGE = ROOT / "examples" / "synthetic-breakout" / "package"
+RANDOM_BASELINE_PACKAGE = ROOT / "examples" / "synthetic-random-baseline" / "package"
+EXAMPLE_PACKAGES = (EXAMPLE_PACKAGE, RANDOM_BASELINE_PACKAGE)
 SCHEMA_DIR = ROOT / "schemas"
 
 
 class ValidatorTests(unittest.TestCase):
-    def test_synthetic_package_validates(self) -> None:
-        result = validate_package(EXAMPLE_PACKAGE, schema_dir=SCHEMA_DIR)
+    def test_synthetic_packages_validate(self) -> None:
+        for package in EXAMPLE_PACKAGES:
+            with self.subTest(package=package):
+                result = validate_package(package, schema_dir=SCHEMA_DIR)
 
-        self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
+                self.assertTrue(result.ok, [issue.as_dict() for issue in result.issues])
 
     def test_single_yaml_artifact_validates_with_explicit_type(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -119,6 +123,23 @@ safety:
         self.assertEqual(entries[0]["verdict"], "blocked")
         self.assertEqual(entries[0]["cost_waterfall"]["path"], "cost_waterfall.json")
         self.assertEqual(entries[0]["open_blockers"], ["paper promotion blocked by diagnostic adapter mode"])
+
+    def test_random_baseline_ledger_entry_is_killed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            package = Path(tmp) / "package"
+            shutil.copytree(RANDOM_BASELINE_PACKAGE, package)
+
+            result = append_ledger_entry(ledger, package, gate="research_gate")
+            entries = read_ledger_entries(ledger)
+            issues = verify_ledger_file(ledger)
+
+        self.assertTrue(result.appended)
+        self.assertEqual(len(entries), 1)
+        self.assertFalse(issues, [issue.as_dict() for issue in issues])
+        self.assertEqual(entries[0]["strategy_id"], "synthetic-random-baseline-v0")
+        self.assertEqual(entries[0]["verdict"], "kill")
+        self.assertEqual(entries[0]["open_blockers"], ["no edge thesis", "negative net result after illustrative costs"])
 
     def test_append_ledger_entry_is_idempotent_for_same_package(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

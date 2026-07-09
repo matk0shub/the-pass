@@ -55,7 +55,8 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 - [ADR decisions](docs/adr/)
 - [Artifact schemas](schemas/)
 - [Artifact templates](templates/)
-- [Public-safe example](examples/synthetic-breakout/)
+- [Public-safe golden path example](examples/synthetic-breakout/)
+- [Public-safe killed baseline example](examples/synthetic-random-baseline/)
 
 ## Current State
 
@@ -65,7 +66,7 @@ The repository is ready for implementation work:
 - Core ADRs are accepted.
 - Artifact templates and JSON Schemas exist.
 - Public safety validation and CI are configured.
-- A synthetic golden path example defines the first end-to-end workflow target.
+- Synthetic golden path and killed baseline examples exercise the first end-to-end workflow target.
 
 Run local validation:
 
@@ -74,7 +75,9 @@ python3 -m pip install -e .
 python3 scripts/validate_public_repo.py
 python3 -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package
+the-pass validate-package examples/synthetic-random-baseline/package
 the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
 the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 ```
 

@@ -12,6 +12,7 @@ secrets, paid data, live APIs, or real order paths.
 - Exercise schema validation.
 - Exercise `taste` blocking/passing logic.
 - Provide a stable CI fixture.
+- Provide a small synthetic CSV data fixture with a reproducible fingerprint.
 
 ## Package
 
@@ -26,9 +27,13 @@ The package in `package/` contains JSON artifacts that mirror the core schemas:
 - `cost_waterfall.json`
 - `verdict_report.json`
 
+The data fixture in `data/synthetic_ohlcv.csv` is synthetic and public-safe.
+
 ## Expected Verdict
 
 `blocked`.
 
 The example is intentionally diagnostic-only. It can demonstrate the workflow, but it must
 not promote to paper because it uses synthetic data and a fixture-only adapter.
+
+The companion negative control is [../synthetic-random-baseline/](../synthetic-random-baseline/).

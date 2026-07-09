@@ -1,0 +1,60 @@
+{
+  "id": "synthetic-random-baseline-v0",
+  "name": "Synthetic Random Baseline Fixture",
+  "status": "killed",
+  "owner": "the-pass",
+  "created_at": "2026-07-09",
+  "market": {
+    "asset_class": "synthetic",
+    "venues": ["synthetic-fixture"],
+    "instruments": ["SYNTH"],
+    "timeframes": ["1d"]
+  },
+  "edge": {
+    "primary_family": "random",
+    "secondary_tags": ["negative-control", "fixture"],
+    "thesis": "There is no edge thesis; random direction exists only as a negative control.",
+    "why_now": "Used to validate that The Pass can kill weak candidates.",
+    "expected_failure_modes": ["negative_net_metrics", "no_falsifiable_edge"]
+  },
+  "data": {
+    "required_sources": ["synthetic-random-fixture"],
+    "required_fields": ["timestamp", "close", "random_signal", "gross_return", "cost", "net_return"],
+    "minimum_history": "synthetic fixture",
+    "manifest_path": "data_manifest.json"
+  },
+  "signal": {
+    "inputs": ["random_signal"],
+    "transforms": ["none"],
+    "decision_time_policy": "diagnostic only",
+    "lookahead_controls": ["predefined fixture values", "no promotion use"]
+  },
+  "execution": {
+    "order_type": "diagnostic_only",
+    "fill_model": "none",
+    "latency_assumption_ms": 0,
+    "fee_model": "illustrative fixed drag",
+    "slippage_model": "included in fixture cost"
+  },
+  "risk": {
+    "sizing_rule": "no capital",
+    "max_exposure": "0",
+    "max_drawdown": "0",
+    "kill_switches": ["any promotion attempt", "no edge thesis"]
+  },
+  "validation": {
+    "train_test_split": "not applicable",
+    "holdout_policy": "not applicable",
+    "null_baselines": ["this fixture is the random baseline"],
+    "parameter_sweeps": [],
+    "required_metrics": ["gross and net pnl", "verdict kill"]
+  },
+  "gates": {
+    "research_gate": ["package validates", "candidate killed"],
+    "paper_gate": ["blocked: random baseline"],
+    "live_gate": ["blocked: no live ADR"]
+  },
+  "done_when": ["Example package validates and verdict is kill"],
+  "kill_when": ["Net result is negative after illustrative costs", "No falsifiable edge exists"],
+  "notes": "Public-safe negative-control fixture."
+}

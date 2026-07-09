@@ -21,10 +21,13 @@ jobs:
         run: python scripts/validate_public_repo.py
       - name: Run unit tests
         run: python -m unittest discover -s tests
-      - name: Validate synthetic package with CLI
-        run: the-pass validate-package examples/synthetic-breakout/package
+      - name: Validate synthetic packages with CLI
+        run: |
+          the-pass validate-package examples/synthetic-breakout/package
+          the-pass validate-package examples/synthetic-random-baseline/package
       - name: Validate receipt ledger CLI
         run: |
           the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl --gate research_gate
+          the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl --gate research_gate
           the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
           the-pass receipts --ledger /tmp/the-pass-ledger.jsonl

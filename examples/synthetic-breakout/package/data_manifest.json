@@ -6,9 +6,9 @@
   "source": {
     "provider": "synthetic-fixture",
     "venue": "synthetic",
-    "endpoint_or_file": "inline fixture",
+    "endpoint_or_file": "../data/synthetic_ohlcv.csv",
     "license_note": "public-safe synthetic data",
-    "raw_path": "",
+    "raw_path": "../data/synthetic_ohlcv.csv",
     "normalized_path": ""
   },
   "coverage": {
@@ -33,7 +33,7 @@
   },
   "fingerprint": {
     "method": "sha256",
-    "value": "synthetic-fixture-no-real-data"
+    "value": "8ba060c35b5d3dc0df0bd5e84815840758a471b7af4397759712fb679fa36fba"
   },
   "limitations": ["Synthetic data", "No market microstructure", "No execution evidence"]
 }

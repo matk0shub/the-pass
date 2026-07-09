@@ -72,6 +72,8 @@ Kill or revise when:
 
 ## Phase 3: Skill Implementation
 
+Status: implemented.
+
 Build skills in this order:
 
 1. `mise`
@@ -98,6 +100,8 @@ Kill or revise when:
 - A skill can create or imply live trading approval.
 
 ## Phase 4: Synthetic Golden Path
+
+Status: implemented.
 
 Build:
 
