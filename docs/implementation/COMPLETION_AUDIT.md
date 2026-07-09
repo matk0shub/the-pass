@@ -34,8 +34,10 @@ the-pass validate examples/adapters/crypto-binance-spot-klines-source-note.json 
 the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl --gate research_gate
 the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl --gate research_gate
 the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
-python3 /Users/matty/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/matty/Developer/the-pass
 ```
+
+Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
+validator against the repo root from their local Codex install.
 
 ## Safety Result
 

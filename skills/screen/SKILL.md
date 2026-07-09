@@ -17,6 +17,7 @@ Use this skill for early diagnostic screens before a full event-driven backtest.
 
 - `templates/strategy_spec.yaml`
 - `templates/data_manifest.yaml`
+- `templates/screen_report.yaml`
 - `docs/implementation/SKILL_CONTRACTS.md`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
 
@@ -54,7 +55,7 @@ the-pass validate <artifact>
 
 ## Outputs
 
-- Screen plan or screen report.
+- Screen plan or screen report based on `templates/screen_report.yaml`.
 - Null/random baseline comparison.
 - Verdict: reject, revise, or escalate to backtest.
 

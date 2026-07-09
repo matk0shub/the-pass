@@ -17,6 +17,8 @@ Use this skill after `taste` confirms actionable issues.
 
 - The finding source and exact blocking evidence.
 - Current package artifacts.
+- `templates/findings.yaml`
+- `templates/refire_ticket.yaml`
 - `docs/implementation/ARTIFACT_LIFECYCLE.md`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
 
@@ -57,6 +59,7 @@ the-pass receipts verify
 
 - Patch or artifact update.
 - Verification commands or evidence.
+- Refire ticket based on `templates/refire_ticket.yaml`.
 - Updated verdict if the gate status changed.
 
 ## Exit States

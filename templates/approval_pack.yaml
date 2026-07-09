@@ -1,0 +1,30 @@
+id: ""
+created_at: ""
+strategy_id: ""
+requested_gate: ""
+config_hash: ""
+adapter: ""
+
+evidence:
+  receipts: []
+  verdict_reports: []
+  paper_reports: []
+  risk_reports: []
+
+risk_limits:
+  max_notional: ""
+  max_daily_loss: ""
+  max_drawdown: ""
+  kill_switches: []
+
+operations:
+  monitoring_plan: ""
+  rollback_plan: ""
+  incident_runbook: ""
+
+human_decisions_required:
+  - decision: ""
+    owner: ""
+    status: pending
+
+status: blocked # packaged|blocked

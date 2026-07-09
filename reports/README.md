@@ -9,3 +9,4 @@ metrics report, and verdict report.
 Tracked audit reports:
 
 - [AUDIT_2026-07-09.md](AUDIT_2026-07-09.md)
+- [SLASH_SKILL_AUDIT_2026-07-09.md](SLASH_SKILL_AUDIT_2026-07-09.md)

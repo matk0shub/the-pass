@@ -1,0 +1,26 @@
+id: ""
+created_at: ""
+paper_plan: ""
+observation_manifest: ""
+
+sample:
+  start_time: ""
+  end_time: ""
+  signals: null
+  simulated_orders: null
+
+comparisons:
+  signal_divergence: null
+  cost_divergence: null
+  fill_divergence: null
+  pnl_divergence: null
+
+breaches:
+  - threshold: ""
+    observed: ""
+    blocks_promotion: true
+
+decision:
+  status: blocked # risk_review_candidate|blocked|kill|revise
+  reason: ""
+  next_action: ""

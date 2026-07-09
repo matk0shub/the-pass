@@ -1,0 +1,22 @@
+id: ""
+created_at: ""
+package: ""
+reviewer: ""
+target_gate: ""
+
+findings:
+  - id: ""
+    severity: P2 # P0|P1|P2|P3
+    status: open # open|confirmed|dismissed|fixed
+    title: ""
+    evidence:
+      artifact: ""
+      path: ""
+      note: ""
+    blocks_promotion: true
+    recommendation: ""
+
+summary:
+  gate_result: blocked # pass|blocked|revise|kill
+  unresolved_blockers: []
+  next_action: ""

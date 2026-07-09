@@ -1,0 +1,22 @@
+id: ""
+created_at: ""
+source_finding: ""
+package: ""
+target_gate: ""
+
+scope:
+  allowed_paths: []
+  blocked_paths:
+    - credentials
+    - live_order_paths
+    - unrelated_refactors
+
+fix_plan:
+  issue: ""
+  intended_change: ""
+  verification_commands: []
+
+result:
+  status: still_blocked # fixed|still_blocked
+  superseding_package: ""
+  evidence: []

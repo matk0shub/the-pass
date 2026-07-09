@@ -20,7 +20,7 @@ blockers, not only prose.
 | `spec` | idea or hypothesis | `StrategySpec` | edge thesis, data needs, costs, risks, done/kill criteria | draft, research_ready, blocked |
 | `screen` | StrategySpec, optional data manifest | screen report | diagnostic-only assumptions, null baseline, costs | reject, revise, backtest_candidate, blocked |
 | `backtest` | StrategySpec, data manifest, runner config | run package | manifest, receipt, metrics, cost waterfall, safety flags | complete, blocked |
-| `taste` | run package | verdict report, findings | leakage, overfit, costs, fills, risk, reproducibility | pass, block, revise, kill |
+| `taste` | run package | verdict report, findings | leakage, overfit, costs, fills, risk, reproducibility | pass, blocked, revise, kill |
 | `refire` | confirmed findings | patch or superseding artifacts | scope boundaries, verification evidence | fixed, still_blocked |
 | `simmer` | target gate, package | iteration receipts | one target gate, no-progress, kill limits | passed, blocked, killed |
 | `paper` | paper candidate package | paper plan, observation checklist | same decision logic, divergence policy, no real orders | paper_ready, blocked |
@@ -35,7 +35,7 @@ Skills may write:
 - `templates/`
 - `schemas/`
 - `research/`
-- `experiments/runs/`
+- `experiments/`
 - `reports/`
 - `examples/`
 

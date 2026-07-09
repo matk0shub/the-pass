@@ -67,10 +67,11 @@ Run the strongest available local checks before returning:
 ```bash
 python3 scripts/validate_public_repo.py
 python3 -m unittest discover -s tests
-python3 /Users/matty/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
 ```
 
 If the Python package is installed, also run any package validation commands listed in `README.md`.
+Codex plugin developers should run the bundled `plugin-creator/scripts/validate_plugin.py`
+validator against the repo root from their local Codex install.
 
 ## Outputs
 

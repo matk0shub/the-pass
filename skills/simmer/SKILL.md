@@ -17,6 +17,7 @@ research gate" or "reduce reproducibility failures to zero".
 ## Read First
 
 - Current package artifacts and receipts.
+- `templates/simmer_laps.yaml`
 - `docs/implementation/SKILL_CONTRACTS.md`
 - `docs/implementation/ARTIFACT_LIFECYCLE.md`
 - Relevant `taste` findings.
@@ -58,7 +59,7 @@ the-pass receipts verify
 ## Outputs
 
 - Gate target.
-- Iteration receipts.
+- Iteration receipts based on `templates/simmer_laps.yaml`.
 - Final status: passed, blocked, killed, or needs human decision.
 
 ## Exit States

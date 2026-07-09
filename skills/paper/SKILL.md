@@ -16,6 +16,9 @@ Use this skill when a candidate is ready for paper/replay observation.
 ## Read First
 
 - Prior package artifacts and verdict.
+- `templates/paper_plan.yaml`
+- `templates/observation_manifest.yaml`
+- `templates/divergence_report.yaml`
 - `docs/implementation/SKILL_CONTRACTS.md`
 - `docs/adapter-contract.md`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
@@ -52,9 +55,9 @@ the-pass receipts verify
 
 ## Outputs
 
-- Paper plan.
-- Observation manifest.
-- Divergence report requirements.
+- Paper plan based on `templates/paper_plan.yaml`.
+- Observation manifest based on `templates/observation_manifest.yaml`.
+- Divergence report requirements based on `templates/divergence_report.yaml`.
 - Gate criteria for risk review.
 
 ## Exit States

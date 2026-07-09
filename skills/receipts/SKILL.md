@@ -17,6 +17,7 @@ exists for a strategy or repo.
 
 - `experiments/ledger.jsonl` or the provided ledger path.
 - Relevant package artifacts referenced by ledger entries.
+- `templates/receipt_summary.yaml`
 - `src/the_pass/ledger.py` for current ledger semantics.
 - `docs/implementation/ARTIFACT_LIFECYCLE.md`
 
@@ -57,7 +58,7 @@ the-pass receipts add <package-dir> --ledger <ledger-path> --gate <gate-name>
 
 ## Outputs
 
-- Receipt table or concise ledger summary.
+- Receipt table or concise ledger summary based on `templates/receipt_summary.yaml`.
 - Promotion status.
 - Open blockers and next actions.
 

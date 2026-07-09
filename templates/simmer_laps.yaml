@@ -1,0 +1,24 @@
+id: ""
+created_at: ""
+target_gate: ""
+package: ""
+budget:
+  max_laps: null
+  stop_condition: ""
+  kill_condition: ""
+
+laps:
+  - lap: 1
+    hypothesis: ""
+    intended_change: ""
+    files_touched: []
+    command: ""
+    expected_signal: ""
+    observed_result: ""
+    moved_gate: false
+    blockers: []
+
+final:
+  status: blocked # passed|blocked|killed
+  reason: ""
+  next_action: ""

@@ -1,0 +1,25 @@
+id: ""
+created_at: ""
+ledger: ""
+filters:
+  strategy_id: ""
+  gate: ""
+  verdict: ""
+  date_range: ""
+
+summary:
+  entries: 0
+  strategies: []
+  verdicts: {}
+  open_blockers: []
+
+packages:
+  - package_id: ""
+    strategy_id: ""
+    run_id: ""
+    gate: ""
+    verdict: ""
+    package_path: ""
+    blockers: []
+
+status: blocked # summarized|blocked

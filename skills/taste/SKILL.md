@@ -16,6 +16,9 @@ Use this skill when reviewing an experiment package, backtest, paper report, or 
 ## Read First
 
 - All artifacts in the package.
+- `templates/verdict_report.yaml`
+- `templates/findings.yaml`
+- `templates/refire_ticket.yaml`
 - `docs/implementation/SKILL_CONTRACTS.md`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
 - `docs/implementation/ARTIFACT_LIFECYCLE.md`
@@ -72,12 +75,13 @@ the-pass receipts verify
 ## Outputs
 
 - Findings with file references.
-- Gate result: pass, block, revise, or kill.
-- Refire ticket for confirmed fixable issues.
+- Gate result: pass, blocked, revise, or kill.
+- Findings based on `templates/findings.yaml`.
+- Refire ticket based on `templates/refire_ticket.yaml` for confirmed fixable issues.
 
 ## Exit States
 
 - `pass`: artifacts validate, required evidence exists, and no blocker remains. Public diagnostic packages cannot use this for live approval.
-- `block`: missing or weak evidence prevents promotion.
+- `blocked`: missing or weak evidence prevents promotion.
 - `revise`: fixable implementation or artifact issues require `refire`.
 - `kill`: the thesis, data, execution assumptions, or robustness evidence fail the gate.

@@ -1,0 +1,30 @@
+id: ""
+created_at: ""
+source_package: ""
+strategy_spec: ""
+adapter: ""
+config_hash: ""
+
+observation:
+  start_after: ""
+  minimum_days: null
+  minimum_signals: null
+  instruments: []
+
+decision_logic:
+  same_as_backtest: true
+  differences: []
+
+divergence_policy:
+  max_cost_divergence: ""
+  max_signal_divergence: ""
+  max_fill_divergence: ""
+  stop_conditions: []
+
+safety:
+  simulated_intents_only: true
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_required: false
+
+status: blocked # paper_ready|blocked

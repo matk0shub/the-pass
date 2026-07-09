@@ -9,6 +9,7 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
@@ -63,6 +64,36 @@ EXAMPLE_PACKAGES = {
     "synthetic-breakout": {"verdict": "blocked", "adapter_mode": "diagnostic"},
     "synthetic-random-baseline": {"verdict": "kill", "adapter_mode": "diagnostic"},
 }
+REQUIRED_TEMPLATES = {
+    "adapter.yaml",
+    "source_note.yaml",
+    "strategy_spec.yaml",
+    "data_manifest.yaml",
+    "run_receipt.yaml",
+    "metrics_report.yaml",
+    "cost_waterfall.yaml",
+    "verdict_report.yaml",
+    "screen_report.yaml",
+    "findings.yaml",
+    "refire_ticket.yaml",
+    "simmer_laps.yaml",
+    "paper_plan.yaml",
+    "observation_manifest.yaml",
+    "divergence_report.yaml",
+    "approval_pack.yaml",
+    "receipt_summary.yaml",
+}
+REQUIRED_WORKFLOW_DIR_READMES = {
+    "experiments/screens/README.md",
+    "experiments/paper/README.md",
+    "research/hypotheses/README.md",
+    "reports/reviews/README.md",
+    "reports/screens/README.md",
+    "reports/paper/README.md",
+    "reports/approval_packs/README.md",
+    "reports/receipt_summaries/README.md",
+    "reports/simmer/README.md",
+}
 
 
 def fail(message: str) -> None:
@@ -87,6 +118,13 @@ def validate_json(path: Path) -> None:
         json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         fail(f"invalid JSON in {path.relative_to(ROOT)}: {exc}")
+
+
+def validate_yaml(path: Path) -> None:
+    try:
+        yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        fail(f"invalid YAML in {path.relative_to(ROOT)}: {exc}")
 
 
 def sha256_file(path: Path) -> str:
@@ -187,6 +225,22 @@ def validate_schemas() -> None:
             Draft202012Validator.check_schema(schema)
         except SchemaError as exc:
             fail(f"invalid JSON Schema in {path.relative_to(ROOT)}: {exc.message}")
+
+
+def validate_templates() -> None:
+    templates_dir = ROOT / "templates"
+    present = {path.name for path in templates_dir.glob("*.yaml")}
+    missing = REQUIRED_TEMPLATES - present
+    if missing:
+        fail(f"missing templates: {', '.join(sorted(missing))}")
+    for name in sorted(REQUIRED_TEMPLATES):
+        validate_yaml(templates_dir / name)
+
+
+def validate_workflow_directories() -> None:
+    for relative in sorted(REQUIRED_WORKFLOW_DIR_READMES):
+        if not (ROOT / relative).exists():
+            fail(f"missing workflow directory README: {relative}")
 
 
 def validate_adapter_examples() -> None:
@@ -344,6 +398,8 @@ def main() -> int:
     validate_python_package()
     validate_skills()
     validate_schemas()
+    validate_templates()
+    validate_workflow_directories()
     validate_adapter_examples()
     validate_example_packages()
     validate_markdown_links()

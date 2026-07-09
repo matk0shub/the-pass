@@ -1,0 +1,24 @@
+id: ""
+created_at: ""
+paper_plan: ""
+source_package: ""
+
+data_capture:
+  event_time_field: ""
+  receive_time_field: ""
+  decision_time_field: ""
+  storage_path: ""
+
+signals:
+  format: ""
+  fields: []
+
+simulated_orders:
+  format: ""
+  fields: []
+  cannot_reach_broker: true
+
+quality:
+  missing_data_policy: ""
+  outage_policy: ""
+  clock_skew_policy: ""

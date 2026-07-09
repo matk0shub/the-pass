@@ -12,7 +12,7 @@ ideas are recipes; evidence is the plate; gates decide whether anything leaves t
 | `/the-pass:spec <idea>` | idea or hypothesis | `StrategySpec` | draft, research_ready, blocked |
 | `/the-pass:screen <spec>` | StrategySpec and optional data manifest | diagnostic screen report | reject, revise, backtest_candidate, blocked |
 | `/the-pass:backtest <spec>` | StrategySpec, data manifest, runner config | run package | complete, blocked |
-| `/the-pass:taste <run>` | run package | verdict and findings | pass, block, revise, kill |
+| `/the-pass:taste <run>` | run package | verdict and findings | pass, blocked, revise, kill |
 | `/the-pass:refire <findings>` | confirmed findings | patch or superseding artifacts | fixed, still_blocked |
 | `/the-pass:simmer <gate>` | target gate and package | iteration receipts | passed, blocked, killed |
 | `/the-pass:paper <candidate>` | tasted package | paper plan | paper_ready, blocked |

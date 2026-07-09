@@ -19,6 +19,7 @@ packages evidence for the next human-controlled gate.
 - All prior receipts and verdict reports.
 - Paper observation outputs.
 - Risk limits, rollback plan, and monitoring plan.
+- `templates/approval_pack.yaml`
 - `docs/implementation/VALIDATION_AND_SAFETY.md`
 - Accepted live-capability ADRs, if any.
 
@@ -53,7 +54,7 @@ the-pass receipts
 
 ## Outputs
 
-- Approval pack checklist.
+- Approval pack based on `templates/approval_pack.yaml`.
 - Missing evidence.
 - Human decisions required.
 

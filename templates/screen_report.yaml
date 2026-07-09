@@ -1,0 +1,41 @@
+id: ""
+created_at: ""
+strategy_spec: ""
+data_manifest: ""
+mode: diagnostic
+
+sample:
+  start_time: ""
+  end_time: ""
+  instruments: []
+  observations: null
+
+variants:
+  tried: []
+  selected: ""
+  rejected: []
+
+baseline:
+  type: null_random
+  result: ""
+
+costs:
+  fee_model: ""
+  spread_model: ""
+  slippage_model: ""
+  assumptions: []
+
+results:
+  gross_metrics: {}
+  net_metrics: {}
+  robustness_notes: []
+
+decision:
+  status: blocked # reject|revise|backtest_candidate|blocked
+  reason: ""
+  next_action: ""
+
+safety:
+  promotion_claim: false
+  live_trading_enabled: false
+  real_order_path_available: false
