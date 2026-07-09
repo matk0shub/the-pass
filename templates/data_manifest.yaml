@@ -1,0 +1,38 @@
+id: ""
+dataset_name: ""
+created_at: YYYY-MM-DDTHH:MM:SSZ
+owner: ""
+
+source:
+  provider: ""
+  venue: ""
+  endpoint_or_file: ""
+  license_note: ""
+  raw_path: ""
+  normalized_path: ""
+
+coverage:
+  instruments: []
+  start_time: ""
+  end_time: ""
+  timezone: UTC
+  event_time_field: ""
+  receive_time_field: ""
+
+schema:
+  fields: []
+  primary_keys: []
+  known_null_fields: []
+
+quality:
+  row_count: 0
+  missing_intervals: []
+  duplicate_policy: ""
+  sequence_gap_policy: ""
+  cross_source_checks: []
+
+fingerprint:
+  method: sha256
+  value: ""
+
+limitations: []

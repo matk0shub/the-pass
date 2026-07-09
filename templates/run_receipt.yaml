@@ -1,0 +1,26 @@
+id: ""
+created_at: YYYY-MM-DDTHH:MM:SSZ
+owner: ""
+strategy_spec: ""
+code_version: ""
+data_manifest: ""
+
+command: ""
+config_hash: ""
+random_seed: null
+
+inputs:
+  artifacts: []
+
+outputs:
+  metrics_report: ""
+  cost_waterfall: ""
+  verdict_report: ""
+  logs: []
+
+safety:
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_available: false
+
+notes: ""

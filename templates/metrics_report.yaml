@@ -1,0 +1,33 @@
+id: ""
+run_receipt: ""
+created_at: YYYY-MM-DDTHH:MM:SSZ
+
+sample:
+  start_time: ""
+  end_time: ""
+  trades: 0
+  signals: 0
+  instruments: []
+
+gross_metrics:
+  pnl: null
+  sharpe: null
+  max_drawdown: null
+  win_rate: null
+  turnover: null
+
+net_metrics:
+  pnl: null
+  sharpe: null
+  max_drawdown: null
+  win_rate: null
+  turnover: null
+
+robustness:
+  null_baseline_result: ""
+  dsr_or_psr: null
+  pbo: null
+  stress_results: []
+  parameter_stability: ""
+
+limitations: []

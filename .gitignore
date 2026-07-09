@@ -1,0 +1,33 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Local env and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Large/generated data
+/data/raw/*
+/data/normalized/*
+!/data/raw/.gitkeep
+!/data/normalized/.gitkeep
+
+# Generated reports and experiment outputs
+/reports/generated/
+/experiments/runs/
+
+# Editor
+.idea/
+.vscode/

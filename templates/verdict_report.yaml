@@ -1,0 +1,28 @@
+id: ""
+run_receipt: ""
+created_at: YYYY-MM-DDTHH:MM:SSZ
+owner: ""
+
+verdict: blocked # kill|revise|paper_candidate|blocked
+summary: ""
+
+gate_results:
+  universal_hard_gates: []
+  asset_class_gates: []
+  failed_gates: []
+
+evidence:
+  metrics_report: ""
+  cost_waterfall: ""
+  data_manifest: ""
+  source_notes: []
+
+risks:
+  statistical: []
+  execution: []
+  data: []
+  operational: []
+
+next_action: ""
+kill_reason: ""
+review_required_by: []

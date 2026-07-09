@@ -1,0 +1,16 @@
+id: ""
+type: academic # academic|book|interview|vendor-doc|strategy-review|blog|code
+priority: P1 # P0|P1|P2|P3
+status: unread # unread|skimmed|reviewed|implemented|rejected
+url: ""
+bibliography: ""
+claim: ""
+evidence: ""
+limitations: ""
+market_applicability: []
+tradable_implication: ""
+required_tests: []
+failure_modes: []
+system_requirements: []
+notes_owner: ""
+review_date: YYYY-MM-DD

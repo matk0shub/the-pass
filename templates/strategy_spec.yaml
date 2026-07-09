@@ -1,0 +1,59 @@
+id: ""
+name: ""
+status: draft # draft|research|killed|paper_candidate|paper|risk_review|live_candidate
+owner: ""
+created_at: YYYY-MM-DD
+
+market:
+  asset_class: crypto_perp # crypto_perp|futures|prediction_market
+  venues: []
+  instruments: []
+  timeframes: []
+
+edge:
+  primary_family: ""
+  secondary_tags: []
+  thesis: ""
+  why_now: ""
+  expected_failure_modes: []
+
+data:
+  required_sources: []
+  required_fields: []
+  minimum_history: ""
+  manifest_path: ""
+
+signal:
+  inputs: []
+  transforms: []
+  decision_time_policy: ""
+  lookahead_controls: []
+
+execution:
+  order_type: diagnostic_only # diagnostic_only|market|limit|paper_only
+  fill_model: ""
+  latency_assumption_ms: 250
+  fee_model: ""
+  slippage_model: ""
+
+risk:
+  sizing_rule: ""
+  max_exposure: ""
+  max_drawdown: ""
+  kill_switches: []
+
+validation:
+  train_test_split: ""
+  holdout_policy: ""
+  null_baselines: []
+  parameter_sweeps: []
+  required_metrics: []
+
+gates:
+  research_gate: []
+  paper_gate: []
+  live_gate: []
+
+done_when: []
+kill_when: []
+notes: ""
