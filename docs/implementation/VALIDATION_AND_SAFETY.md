@@ -1,0 +1,100 @@
+# Validation And Safety
+
+The Pass should fail closed. Missing evidence, ambiguous data, or live-capable paths block
+promotion.
+
+## Validation Layers
+
+1. Public repository validation.
+2. Plugin manifest validation.
+3. Artifact schema validation.
+4. Package validation.
+5. Gate validation.
+6. Public release validation.
+
+## Public Repository Validation
+
+`scripts/validate_public_repo.py` must check:
+
+- Plugin manifest exists and has required metadata.
+- All expected skills exist.
+- All core schemas exist and are valid JSON.
+- No high-confidence secret patterns are present.
+- No leftover scaffold placeholders.
+- No unexpectedly large tracked-style files.
+
+Future additions:
+
+- Detect live order-placement keywords in core plugin paths.
+- Detect common paid data dump extensions under tracked paths.
+- Check README links.
+- Validate example packages.
+
+## Artifact Validation
+
+Planned CLI:
+
+```bash
+the-pass validate <artifact>
+the-pass validate-package <run-dir>
+the-pass receipts [strategy-id]
+```
+
+Rules:
+
+- YAML and JSON inputs are accepted.
+- Every artifact declares or implies its schema.
+- Required fields must be present before gate use.
+- Validation errors must be actionable and point to fields.
+
+## Package Validation
+
+A run package is valid only if it contains:
+
+- `strategy_spec`
+- `data_manifest`
+- `run_receipt`
+- `metrics_report`
+- `cost_waterfall`
+- `verdict_report`
+
+The receipt must link to the other artifacts and include safety flags:
+
+- `live_trading_enabled: false`
+- `real_order_path_available: false`
+- `credentials_available: false`
+
+## Public Safety Blocks
+
+Block public release if any of these are present:
+
+- API keys, private keys, session cookies, wallet seeds, broker credentials.
+- Paid data files or data with unclear redistribution rights.
+- Private account IDs, balances, fills, order IDs, or PnL.
+- Real order placement paths.
+- Proprietary strategy parameters not intended for publication.
+
+## Live-Capable Contribution Blocks
+
+Block live-capable code unless an accepted ADR defines:
+
+- adapter,
+- venue,
+- credential boundary,
+- dry-run proof,
+- risk envelope,
+- max loss,
+- rollback plan,
+- incident runbook,
+- explicit human approval process.
+
+## CI Requirements
+
+Every pull request should run:
+
+```bash
+python3 scripts/validate_public_repo.py
+```
+
+Codex plugin developers should also run the bundled plugin validator from their local Codex
+skill/tooling install against the repo root.

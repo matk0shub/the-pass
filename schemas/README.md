@@ -7,6 +7,7 @@ gate-critical fields should be present and typed.
 Core artifacts:
 
 - `source_note.schema.json`
+- `adapter.schema.json`
 - `strategy_spec.schema.json`
 - `data_manifest.schema.json`
 - `run_receipt.schema.json`

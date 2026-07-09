@@ -5,21 +5,32 @@ ideas are recipes; evidence is the plate; gates decide whether anything leaves t
 
 ## Commands
 
-| Command | Purpose | Can Promote? |
-| --- | --- | --- |
-| `/the-pass:mise` | Prepare repo structure, templates, ADRs, and safety checks. | No |
-| `/the-pass:research <topic>` | Turn sources into source notes and hypotheses. | No |
-| `/the-pass:spec <idea>` | Convert an idea into a falsifiable StrategySpec. | No |
-| `/the-pass:screen <spec>` | Run or design diagnostic screening. | No |
-| `/the-pass:backtest <spec>` | Build a reproducible backtest artifact package. | No |
-| `/the-pass:taste <run>` | Independently review data, stats, execution, and risk. | Can block |
-| `/the-pass:refire <findings>` | Fix confirmed findings without expanding scope. | No |
-| `/the-pass:simmer <gate>` | Iterate toward one gate or kill condition. | No |
-| `/the-pass:paper <candidate>` | Prepare paper/replay observation. | Can recommend risk review |
-| `/the-pass:plate <candidate>` | Package evidence for the next human-controlled gate. | No live approval |
-| `/the-pass:receipts` | Summarize evidence, costs, decisions, and open blockers. | No |
+| Command | Inputs | Required Output | Exit States |
+| --- | --- | --- | --- |
+| `/the-pass:mise` | repo path | setup audit or repaired scaffold | ready, repaired, blocked |
+| `/the-pass:research <topic>` | topic, URL, file, or source text | source notes and hypotheses | reviewed, rejected, blocked |
+| `/the-pass:spec <idea>` | idea or hypothesis | `StrategySpec` | draft, research_ready, blocked |
+| `/the-pass:screen <spec>` | StrategySpec and optional data manifest | diagnostic screen report | reject, revise, backtest_candidate, blocked |
+| `/the-pass:backtest <spec>` | StrategySpec, data manifest, runner config | run package | complete, blocked |
+| `/the-pass:taste <run>` | run package | verdict and findings | pass, block, revise, kill |
+| `/the-pass:refire <findings>` | confirmed findings | patch or superseding artifacts | fixed, still_blocked |
+| `/the-pass:simmer <gate>` | target gate and package | iteration receipts | passed, blocked, killed |
+| `/the-pass:paper <candidate>` | tasted package | paper plan | paper_ready, blocked |
+| `/the-pass:plate <candidate>` | paper/risk package | approval pack | packaged, blocked |
+| `/the-pass:receipts` | repo or strategy ID | ledger summary | summarized, blocked |
+
+## Shared Command Rules
+
+- Commands write structured artifacts where possible.
+- Commands cannot grant live approval.
+- Commands cannot hide missing evidence behind prose.
+- Commands must return `blocked` when required artifacts or safety evidence are missing.
+- Commands must preserve previous run packages instead of overwriting them silently.
 
 ## Live Boundary
 
 No command sends real orders. `plate` can prepare an approval pack, but live approval must
 be explicit, dated, human-controlled, and tied to an exact config hash.
+
+See [../implementation/SKILL_CONTRACTS.md](../implementation/SKILL_CONTRACTS.md) for the
+implementation-level contract.

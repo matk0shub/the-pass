@@ -1,0 +1,18 @@
+{
+  "id": "synthetic-breakout-fixture",
+  "type": "code",
+  "priority": "P2",
+  "status": "reviewed",
+  "url": "",
+  "bibliography": "The Pass synthetic fixture",
+  "claim": "A public-safe fixture can exercise the artifact workflow without asserting real edge.",
+  "evidence": "All values are synthetic and intended for validation only.",
+  "limitations": "Cannot support a trading claim, paper promotion, or live approval.",
+  "market_applicability": ["synthetic"],
+  "tradable_implication": "None.",
+  "required_tests": ["Artifact package validates", "Verdict remains blocked for promotion"],
+  "failure_modes": ["Fixture accidentally treated as evidence", "Synthetic costs mistaken for real execution"],
+  "system_requirements": ["Adapter mode must stay diagnostic", "Safety flags must remain false"],
+  "notes_owner": "the-pass",
+  "review_date": "2026-07-09"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "synthetic-breakout-verdict-v0",
+  "run_receipt": "run_receipt.json",
+  "created_at": "2026-07-09T00:00:00Z",
+  "owner": "the-pass",
+  "verdict": "blocked",
+  "summary": "Public-safe fixture validates the workflow but cannot support paper promotion.",
+  "gate_results": {
+    "universal_hard_gates": ["artifact package present"],
+    "asset_class_gates": ["synthetic diagnostic only"],
+    "failed_gates": ["paper promotion blocked by diagnostic adapter mode"]
+  },
+  "evidence": {
+    "metrics_report": "metrics_report.json",
+    "cost_waterfall": "cost_waterfall.json",
+    "data_manifest": "data_manifest.json",
+    "source_notes": ["source_note.json"]
+  },
+  "risks": {
+    "statistical": ["No real sample"],
+    "execution": ["No fills"],
+    "data": ["Synthetic only"],
+    "operational": ["None; no live path"]
+  },
+  "next_action": "Use as CI fixture for package validation.",
+  "kill_reason": "",
+  "review_required_by": []
+}

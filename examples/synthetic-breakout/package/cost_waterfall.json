@@ -1,0 +1,29 @@
+{
+  "id": "synthetic-breakout-costs-v0",
+  "run_receipt": "run_receipt.json",
+  "created_at": "2026-07-09T00:00:00Z",
+  "gross_pnl": null,
+  "costs": {
+    "fees": null,
+    "spread": null,
+    "slippage": null,
+    "funding": null,
+    "borrow": null,
+    "roll": null,
+    "rejects_or_missed_fills": null
+  },
+  "net_pnl": null,
+  "assumptions": {
+    "fee_model": "none",
+    "fill_model": "none",
+    "latency_model": "none",
+    "depth_model": "none"
+  },
+  "stress": {
+    "fees_x_1_5": null,
+    "slippage_x_2_0": null,
+    "latency_x_2_0": null,
+    "depth_x_0_5": null
+  },
+  "limitations": ["No modeled execution"]
+}

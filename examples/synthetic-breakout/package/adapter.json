@@ -1,0 +1,33 @@
+{
+  "id": "synthetic-breakout",
+  "name": "Synthetic Breakout Adapter",
+  "mode": "diagnostic",
+  "asset_classes": ["synthetic"],
+  "owner": "the-pass",
+  "providers": [
+    {
+      "id": "synthetic-fixture",
+      "type": "synthetic",
+      "license": "public-safe",
+      "fields": ["timestamp", "open", "high", "low", "close", "volume"],
+      "limitations": ["No real market microstructure", "No evidence of tradable edge"]
+    }
+  ],
+  "engine": {
+    "name": "none",
+    "role": "fixture-only",
+    "limitations": ["No execution engine"]
+  },
+  "policies": {
+    "timestamp": "Single synthetic timestamp; no receive-time latency model",
+    "cost_model": "Fixed illustrative cost only",
+    "fill_model": "No fills; diagnostic package only",
+    "risk_model": "No capital at risk",
+    "settlement": "Not applicable"
+  },
+  "safety": {
+    "live_trading_enabled": false,
+    "real_order_path_available": false,
+    "credentials_required": false
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/adapter.schema.json",
+  "title": "Adapter",
+  "type": "object",
+  "required": ["id", "name", "mode", "asset_classes", "providers", "engine", "policies", "safety"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string" },
+    "mode": { "type": "string", "enum": ["diagnostic", "research", "paper", "live-capable"] },
+    "asset_classes": { "type": "array", "items": { "type": "string" } },
+    "owner": { "type": "string" },
+    "providers": { "type": "array", "items": { "type": "object" } },
+    "engine": { "type": "object" },
+    "policies": { "type": "object" },
+    "safety": {
+      "type": "object",
+      "required": ["live_trading_enabled", "real_order_path_available", "credentials_required"],
+      "properties": {
+        "live_trading_enabled": { "type": "boolean" },
+        "real_order_path_available": { "type": "boolean" },
+        "credentials_required": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

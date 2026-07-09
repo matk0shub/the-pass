@@ -1,0 +1,29 @@
+id: ""
+name: ""
+mode: diagnostic # diagnostic|research|paper|live-capable
+asset_classes: []
+owner: ""
+
+providers:
+  - id: ""
+    type: "" # synthetic|exchange|broker|vendor|warehouse|manual
+    license: ""
+    fields: []
+    limitations: []
+
+engine:
+  name: ""
+  role: "" # fixture-only|screening|backtest|paper|live
+  limitations: []
+
+policies:
+  timestamp: ""
+  cost_model: ""
+  fill_model: ""
+  risk_model: ""
+  settlement: ""
+
+safety:
+  live_trading_enabled: false
+  real_order_path_available: false
+  credentials_required: false

@@ -146,9 +146,10 @@ Rezimy:
 Doporuceny technicky pristup:
 
 - Ridit se rozhodnutim v sekci 19.4.
-- Pro MVP pouzit pandas/NumPy jako default screening vrstvu; vectorbt je volitelny
-  akcelerator pro velke parameter sweeps, ne finalni dukaz obchodovatelnosti.
-- Pro MVP postavit lightweight event-driven simulator nad canonical event modelem.
+- Core framework je engine-neutral; konkretni adapter muze pouzit pandas/NumPy, vectorbt,
+  NautilusTrader, Backtrader, LEAN nebo vlastni simulator, pokud emituje povinne artefakty.
+- Public examples mohou pouzit lehky fixture/simulator, ale nesmi se prezentovat jako
+  finalni dukaz obchodovatelnosti.
 - NautilusTrader vyhodnotit az pres ADR, pokud dve nebo vice strategy families potrebuji
   sdilene live/backtest semantics.
 - Pro produkci drzet jeden canonical event model; vectorized research je jen filtr, ne dukaz.
@@ -304,7 +305,7 @@ Navrhovane prikazy:
 - `/the-pass:plate <candidate>`: priprava approval packu pro dalsi gate, bez automatickeho live.
 - `/the-pass:receipts`: ledger runu, nakladu, zaveru a otevrenych rizik.
 
-Dulezite: `promote` nevytvari live obchodovani. Jen vyrobi balicek pro cloveka.
+Dulezite: `plate` nevytvari live obchodovani. Jen vyrobi balicek pro cloveka.
 
 ## 7. Research corpus
 
@@ -830,7 +831,7 @@ Tyden 4:
 
 - Pridat walk-forward, embargo, stress a cost waterfall.
 - Implementovat prvni audit report.
-- Rozhodnout, ktere baseline jdou do dalsi faze a ktere se zabiji.
+- Vydat verdict, ktere baseline jdou do dalsi faze a ktere se zabiji.
 
 Vystup po 30 dnech:
 
@@ -1007,19 +1008,18 @@ cost model, audit workflow and promotion gates.
 Default stack:
 
 - Storage: Parquet files partitioned by `source/venue/instrument/date` for raw and normalized
-  market data; DuckDB for local analytical queries; SQLite for small ledgers in MVP; Postgres
-  only when multiple processes/users need concurrent writes.
-- Screening: pandas/NumPy first; vectorbt optional for large parameter sweeps, never for
-  final execution realism.
-- Event simulation: lightweight in-house simulator in MVP, because prediction-market and
-  crypto-perp assumptions need explicit cost/fill rules and because current repo dependencies
-  are intentionally minimal.
-- Production-grade engine: evaluate NautilusTrader in a dedicated ADR after canonical events,
-  cost model, paper broker and risk gates are stable.
-- QuantConnect/LEAN: use as conceptual reference for Universe -> Alpha -> Portfolio -> Risk
-  -> Execution separation, not as local runtime in MVP.
-- Backtrader: not selected for MVP; useful for simple bars, insufficient as default for
-  modern crypto/funding/orderbook realism.
+  market data where adapters need data files; DuckDB for local analytical queries; SQLite for
+  small ledgers; Postgres only when multiple processes/users need concurrent writes.
+- Screening: adapter-selected engine. pandas/NumPy and vectorbt are allowed examples, never
+  final execution proof by themselves.
+- Event simulation: adapter-selected engine. Any simulator must expose explicit cost, fill,
+  timestamp and safety assumptions.
+- Production-grade engine: evaluate NautilusTrader, LEAN, Backtrader or custom engines via
+  adapter ADRs, not as core identity.
+- QuantConnect/LEAN: useful architectural reference for Universe -> Alpha -> Portfolio ->
+  Risk -> Execution separation, but not required core runtime.
+- Backtrader: acceptable only where the adapter documents why bar-level assumptions are
+  sufficient.
 
 Build in-house:
 
@@ -1226,9 +1226,10 @@ Latency policy:
 
 - Record `event_time`, `receive_time`, `decision_time`, `order_created_time`,
   `order_ack_time`, `fill_time`.
-- Crypto MVP default latency assumption: 250 ms base, 500 ms stress, 1000 ms severe stress
-  until measured.
-- Any strategy requiring less than 100 ms edge is out of MVP.
+- Adapter default latency must be stated before a run. If not measured, it must be
+  pessimistic and marked as a limitation.
+- Any strategy requiring less than 100 ms edge is outside core examples and needs a dedicated
+  latency/market-structure ADR before research promotion.
 
 ### 19.9 Risk governance
 

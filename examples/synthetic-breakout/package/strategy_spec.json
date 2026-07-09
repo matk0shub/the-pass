@@ -1,0 +1,60 @@
+{
+  "id": "synthetic-breakout-v0",
+  "name": "Synthetic Breakout Fixture",
+  "status": "research",
+  "owner": "the-pass",
+  "created_at": "2026-07-09",
+  "market": {
+    "asset_class": "synthetic",
+    "venues": ["synthetic-fixture"],
+    "instruments": ["SYNTH"],
+    "timeframes": ["1d"]
+  },
+  "edge": {
+    "primary_family": "breakout",
+    "secondary_tags": ["fixture"],
+    "thesis": "This is a workflow fixture, not an edge claim.",
+    "why_now": "Used to validate The Pass artifacts before implementation.",
+    "expected_failure_modes": ["mistaken_for_real_edge"]
+  },
+  "data": {
+    "required_sources": ["synthetic-fixture"],
+    "required_fields": ["timestamp", "open", "high", "low", "close", "volume"],
+    "minimum_history": "synthetic fixture",
+    "manifest_path": "data_manifest.json"
+  },
+  "signal": {
+    "inputs": ["high", "close"],
+    "transforms": ["illustrative breakout flag"],
+    "decision_time_policy": "diagnostic only",
+    "lookahead_controls": ["no promotion use"]
+  },
+  "execution": {
+    "order_type": "diagnostic_only",
+    "fill_model": "none",
+    "latency_assumption_ms": 0,
+    "fee_model": "illustrative only",
+    "slippage_model": "none"
+  },
+  "risk": {
+    "sizing_rule": "no capital",
+    "max_exposure": "0",
+    "max_drawdown": "0",
+    "kill_switches": ["any promotion attempt"]
+  },
+  "validation": {
+    "train_test_split": "not applicable",
+    "holdout_policy": "not applicable",
+    "null_baselines": ["random_fixture"],
+    "parameter_sweeps": [],
+    "required_metrics": ["artifact completeness"]
+  },
+  "gates": {
+    "research_gate": ["package validates"],
+    "paper_gate": ["blocked: synthetic diagnostic adapter"],
+    "live_gate": ["blocked: no live ADR"]
+  },
+  "done_when": ["Example package validates"],
+  "kill_when": ["Fixture is used as real trading evidence"],
+  "notes": "Public-safe golden path fixture."
+}
