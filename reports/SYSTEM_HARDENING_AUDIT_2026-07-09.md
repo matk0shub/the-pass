@@ -99,6 +99,7 @@ trading.
 - Thirty-three unit tests pass, including mutation tests for false links, duplicate artifacts,
   unresolved blockers, invalid gates, ledger edits, and post-receipt artifact edits.
 - Both synthetic packages, all adapter descriptors, and the receipt CLI workflow pass.
+- GitHub Actions passes on Python 3.9 and 3.12 using Node 24-based action runtimes.
 
 ## Residual Boundary
 
