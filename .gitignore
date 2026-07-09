@@ -28,6 +28,7 @@ venv/
 # Generated reports and experiment outputs
 /reports/generated/
 /experiments/runs/
+/experiments/ledger.jsonl
 
 # Editor
 .idea/

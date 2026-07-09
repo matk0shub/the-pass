@@ -6,6 +6,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from the_pass.ledger import (
+    append_ledger_entry,
+    build_ledger_entry,
+    read_ledger_entries,
+    verify_ledger_file,
+)
 from the_pass.validator import validate_artifact, validate_package
 
 
@@ -82,6 +88,65 @@ safety:
 
         self.assertFalse(result.ok)
         self.assertTrue(any("diagnostic adapters cannot produce paper_candidate" in issue.message for issue in result.issues))
+
+    def test_ledger_package_id_is_deterministic_across_copies(self) -> None:
+        with tempfile.TemporaryDirectory() as left_tmp, tempfile.TemporaryDirectory() as right_tmp:
+            left = Path(left_tmp) / "package"
+            right = Path(right_tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, left)
+            shutil.copytree(EXAMPLE_PACKAGE, right)
+
+            left_entry = build_ledger_entry(left, gate="research_gate", recorded_at="2026-07-09T00:00:00Z")
+            right_entry = build_ledger_entry(right, gate="research_gate", recorded_at="2026-07-10T00:00:00Z")
+
+        self.assertEqual(left_entry["package_id"], right_entry["package_id"])
+
+    def test_append_ledger_entry_and_verify_chain(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+
+            result = append_ledger_entry(ledger, package, gate="research_gate")
+            entries = read_ledger_entries(ledger)
+            issues = verify_ledger_file(ledger)
+
+        self.assertTrue(result.appended)
+        self.assertEqual(len(entries), 1)
+        self.assertFalse(issues, [issue.as_dict() for issue in issues])
+        self.assertEqual(entries[0]["strategy_id"], "synthetic-breakout-v0")
+        self.assertEqual(entries[0]["gate"], "research_gate")
+        self.assertEqual(entries[0]["verdict"], "blocked")
+        self.assertEqual(entries[0]["cost_waterfall"]["path"], "cost_waterfall.json")
+        self.assertEqual(entries[0]["open_blockers"], ["paper promotion blocked by diagnostic adapter mode"])
+
+    def test_append_ledger_entry_is_idempotent_for_same_package(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+
+            first = append_ledger_entry(ledger, package, gate="research_gate")
+            second = append_ledger_entry(ledger, package, gate="research_gate")
+            entries = read_ledger_entries(ledger)
+
+        self.assertTrue(first.appended)
+        self.assertFalse(second.appended)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(first.entry["package_id"], second.entry["package_id"])
+
+    def test_ledger_verify_detects_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            package = Path(tmp) / "package"
+            shutil.copytree(EXAMPLE_PACKAGE, package)
+            append_ledger_entry(ledger, package, gate="research_gate")
+            text = ledger.read_text(encoding="utf-8")
+            ledger.write_text(text.replace('"verdict":"blocked"', '"verdict":"revise"'), encoding="utf-8")
+
+            issues = verify_ledger_file(ledger)
+
+        self.assertTrue(any(issue.path == "entry[0].entry_hash" for issue in issues))
 
 
 if __name__ == "__main__":

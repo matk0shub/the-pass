@@ -74,6 +74,8 @@ python3 -m pip install -e .
 python3 scripts/validate_public_repo.py
 python3 -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package
+the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 ```
 
 Codex plugin developers can also run the bundled plugin validator against the repo root.

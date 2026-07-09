@@ -37,6 +37,9 @@ Planned CLI:
 ```bash
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
+the-pass receipts add <run-dir>
+the-pass receipts verify
+the-pass receipts
 ```
 
 Rules:
@@ -62,6 +65,25 @@ The receipt must link to the other artifacts and include safety flags:
 - `live_trading_enabled: false`
 - `real_order_path_available: false`
 - `credentials_available: false`
+
+## Receipt Ledger Validation
+
+The receipt ledger is append-only JSONL. Each entry includes:
+
+- deterministic package ID,
+- artifact paths and SHA-256 fingerprints,
+- strategy ID,
+- run ID,
+- gate,
+- verdict,
+- data manifest reference,
+- cost waterfall reference,
+- open blockers,
+- previous entry hash,
+- entry hash.
+
+`the-pass receipts add` refuses to append when the existing ledger hash chain is invalid.
+`the-pass receipts verify` recomputes the chain and fails if an entry was edited silently.
 
 ## Public Safety Blocks
 
@@ -96,6 +118,8 @@ python3 -m pip install -e .
 python3 scripts/validate_public_repo.py
 python3 -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package
+the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 ```
 
 Codex plugin developers should also run the bundled plugin validator from their local Codex

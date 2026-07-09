@@ -49,6 +49,8 @@ Kill or revise when:
 
 ## Phase 2: Receipt Ledger
 
+Status: implemented.
+
 Build:
 
 - Append-only run receipt ledger.
@@ -59,7 +61,9 @@ Build:
 Done when:
 
 - A package can be reconstructed from ledger entries and artifact paths.
-- Receipts show strategy ID, gate, verdict, source manifests, cost report, and open blockers.
+- Receipts show strategy ID, gate, verdict, data manifest, cost report, and open blockers.
+- Ledger hash-chain verification detects silent edits.
+- CI exercises add, verify, and summary commands.
 
 Kill or revise when:
 

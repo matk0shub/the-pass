@@ -51,6 +51,15 @@ and may link to the previous package in its receipt.
 - A revised StrategySpec must create a new version before rerun.
 - A corrected artifact supersedes the old artifact; it does not silently replace it.
 
+## Receipt Ledger
+
+The receipt ledger is JSONL and append-only. Each entry records the package path, relative
+artifact paths, SHA-256 fingerprints, strategy ID, run ID, gate, verdict, cost report, data
+manifest, open blockers, `previous_hash`, and `entry_hash`.
+
+`the-pass receipts add` validates a package before appending it. `the-pass receipts verify`
+recomputes the hash chain and fails if any previous entry was edited silently.
+
 ## Gate Inputs
 
 Research gate requires:

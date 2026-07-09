@@ -78,10 +78,13 @@ def validate_python_package() -> None:
         fail("missing pyproject.toml")
     cli_path = ROOT / "src" / "the_pass" / "cli.py"
     validator_path = ROOT / "src" / "the_pass" / "validator.py"
+    ledger_path = ROOT / "src" / "the_pass" / "ledger.py"
     if not cli_path.exists():
         fail("missing src/the_pass/cli.py")
     if not validator_path.exists():
         fail("missing src/the_pass/validator.py")
+    if not ledger_path.exists():
+        fail("missing src/the_pass/ledger.py")
 
 
 def validate_skills() -> None:

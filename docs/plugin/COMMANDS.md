@@ -42,7 +42,10 @@ The first concrete CLI commands are artifact validators:
 ```bash
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
+the-pass receipts add <run-dir>
+the-pass receipts verify
+the-pass receipts
 ```
 
 They accept JSON or YAML, infer schema type where possible, and return non-zero on missing
-or weak evidence.
+or weak evidence. Receipt commands maintain an append-only hash-chained JSONL ledger.
