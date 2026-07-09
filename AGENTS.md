@@ -1,4 +1,4 @@
-# Strategy Lab Working Agreements
+# The Pass Working Agreements
 
 This repository is a trading research and automation lab. Treat all future execution
 paths as potentially handling real money.

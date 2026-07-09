@@ -11,9 +11,9 @@ research loop works would create avoidable complexity and weak evidence.
 
 ## Decision
 
-The MVP is a research-only Strategy Lab v0 focused on crypto perpetual futures. It must
-prove that the system can kill bad strategies, reproduce experiments, and promote only
-well-evidenced candidates to paper review.
+The MVP is The Pass v0: a research-only strategy review station focused on crypto
+perpetual futures. It must prove that the system can kill bad strategies, reproduce
+experiments, and promote only well-evidenced candidates to paper review.
 
 Primary MVP:
 

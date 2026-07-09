@@ -1,9 +1,14 @@
-# Strategy Lab: plan pro testovani trading strategii a automatizaci
+# The Pass: plan pro testovani trading strategii a automatizaci
 
 Datum: 2026-07-09
 
 Status: strategicky plan, nezavisly na aktualnim stavu repozitare. Dokument popisuje cilovy
 system a gate-based cestu k nemu. Nejedna se o schvaleni live tradingu.
+
+Nazev `The Pass` je z kuchynskeho prostredi: je to misto, kde hotove jidlo projde
+posledni kontrolou pred vydajem. V tomto projektu je "jidlo" strategie, "recept" je
+`StrategySpec`, "vareni" je backtest/replay a "vydaj" je paper nebo live review. Nic se
+neposila dal bez dukazu.
 
 ## 1. Zamer
 
@@ -287,17 +292,17 @@ Navrhovane role:
 
 Navrhovane prikazy:
 
-- `/strategy-lab:mise`: setup pravidel, slozek, sablon, credentials check bez obchodovani.
-- `/strategy-lab:research <topic>`: najdi zdroje, udelej source map, navrhni hypotezy.
-- `/strategy-lab:spec <idea>`: prepis napad do `StrategySpec`.
-- `/strategy-lab:screen <spec>`: rychly vectorized screen s konzervativnimi naklady.
-- `/strategy-lab:backtest <spec>`: event-driven backtest s artefakty.
-- `/strategy-lab:audit <run>`: nezavisly review dat, statistik, execution a rizika.
-- `/strategy-lab:refire <findings>`: oprav potvrzene problemy bez rozsireni scope.
-- `/strategy-lab:simmer <gate>`: iteruj jen do splneni konkretni brany nebo kill limitu.
-- `/strategy-lab:paper <candidate>`: paper trading se stejnym rozhodovacim kodem.
-- `/strategy-lab:promote <candidate>`: priprava live approval packu, bez automatickeho live.
-- `/strategy-lab:receipts`: ledger runu, nakladu, zaveru a otevrenych rizik.
+- `/the-pass:mise`: setup pravidel, slozek, sablon, credentials check bez obchodovani.
+- `/the-pass:research <topic>`: najdi zdroje, udelej source map, navrhni hypotezy.
+- `/the-pass:spec <idea>`: prepis napad do `StrategySpec`.
+- `/the-pass:screen <spec>`: rychly vectorized screen s konzervativnimi naklady.
+- `/the-pass:backtest <spec>`: event-driven backtest s artefakty.
+- `/the-pass:taste <run>`: nezavisly review dat, statistik, execution a rizika.
+- `/the-pass:refire <findings>`: oprav potvrzene problemy bez rozsireni scope.
+- `/the-pass:simmer <gate>`: iteruj jen do splneni konkretni brany nebo kill limitu.
+- `/the-pass:paper <candidate>`: paper trading se stejnym rozhodovacim kodem.
+- `/the-pass:plate <candidate>`: priprava approval packu pro dalsi gate, bez automatickeho live.
+- `/the-pass:receipts`: ledger runu, nakladu, zaveru a otevrenych rizik.
 
 Dulezite: `promote` nevytvari live obchodovani. Jen vyrobi balicek pro cloveka.
 
@@ -907,8 +912,9 @@ Acceptance criteria:
 
 ### 19.2 MVP scope
 
-Rozhodnuti: MVP je research-only Strategy Lab v0, ne trading bot. Cilem je dokazat, ze
-system umi spolehlive zabijet spatne strategie a reprodukovat dobre experimenty.
+Rozhodnuti: MVP je The Pass v0, research-only review station, ne trading bot. Cilem je
+dokazat, ze system umi spolehlive zabijet spatne strategie a reprodukovat dobre
+experimenty.
 
 Primary MVP:
 

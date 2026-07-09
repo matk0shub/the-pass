@@ -1,12 +1,15 @@
-# Strategy Lab
+# The Pass
 
-Research operating system for testing trading strategy ideas and building safe
-automation workflows.
+The final review station for trading strategy research.
 
-This repository starts from the plan in
-`docs/research/strategy-lab-automation-plan.md`. The project is intentionally
-research-first: it should kill weak ideas quickly, preserve evidence for good ideas,
-and keep any live trading boundary behind explicit human approval.
+The Pass is a research operating system for testing trading strategy ideas and building
+safe automation workflows. It borrows the kitchen metaphor deliberately: strategy ideas
+are recipes, data is mise en place, backtests are cooks, audits are tasting, and nothing
+gets plated for paper or live review until it passes the line.
+
+This repository starts from the plan in `docs/research/the-pass-plan.md`. The project is
+intentionally research-first: it should kill weak ideas quickly, preserve evidence for
+good ideas, and keep any live trading boundary behind explicit human approval.
 
 ## Scope
 
@@ -18,7 +21,7 @@ and keep any live trading boundary behind explicit human approval.
 
 ## Current Starting Point
 
-- Main plan: `docs/research/strategy-lab-automation-plan.md`
+- Main plan: `docs/research/the-pass-plan.md`
 - Decisions: `docs/adr/`
 - Templates: `templates/`
 - Backlog: `research/backlog/`
