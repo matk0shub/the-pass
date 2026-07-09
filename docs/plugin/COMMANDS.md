@@ -34,3 +34,15 @@ be explicit, dated, human-controlled, and tied to an exact config hash.
 
 See [../implementation/SKILL_CONTRACTS.md](../implementation/SKILL_CONTRACTS.md) for the
 implementation-level contract.
+
+## Implemented CLI
+
+The first concrete CLI commands are artifact validators:
+
+```bash
+the-pass validate <artifact>
+the-pass validate-package <run-dir>
+```
+
+They accept JSON or YAML, infer schema type where possible, and return non-zero on missing
+or weak evidence.

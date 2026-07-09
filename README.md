@@ -70,7 +70,10 @@ The repository is ready for implementation work:
 Run local validation:
 
 ```bash
+python3 -m pip install -e .
 python3 scripts/validate_public_repo.py
+python3 -m unittest discover -s tests
+the-pass validate-package examples/synthetic-breakout/package
 ```
 
 Codex plugin developers can also run the bundled plugin validator against the repo root.

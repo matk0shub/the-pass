@@ -25,6 +25,8 @@ Gate:
 
 ## Phase 1: Artifact Validator CLI
 
+Status: implemented.
+
 Build:
 
 - `the-pass validate <file>` for one artifact.
@@ -35,9 +37,10 @@ Build:
 
 Done when:
 
-- All core templates validate after placeholders are filled.
+- CLI can validate individual JSON/YAML artifacts.
+- CLI can validate full run packages.
 - The synthetic example package validates.
-- CI runs the package validator.
+- CI runs package validation and unit tests.
 
 Kill or revise when:
 

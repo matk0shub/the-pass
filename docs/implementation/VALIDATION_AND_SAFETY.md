@@ -27,8 +27,8 @@ Future additions:
 
 - Detect live order-placement keywords in core plugin paths.
 - Detect common paid data dump extensions under tracked paths.
-- Check README links.
-- Validate example packages.
+- Validate artifact schemas with a portable schema linter.
+- Run live-boundary static checks before accepting adapter code.
 
 ## Artifact Validation
 
@@ -37,7 +37,6 @@ Planned CLI:
 ```bash
 the-pass validate <artifact>
 the-pass validate-package <run-dir>
-the-pass receipts [strategy-id]
 ```
 
 Rules:
@@ -93,7 +92,10 @@ Block live-capable code unless an accepted ADR defines:
 Every pull request should run:
 
 ```bash
+python3 -m pip install -e .
 python3 scripts/validate_public_repo.py
+python3 -m unittest discover -s tests
+the-pass validate-package examples/synthetic-breakout/package
 ```
 
 Codex plugin developers should also run the bundled plugin validator from their local Codex

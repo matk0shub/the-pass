@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "the-pass"
+version = "0.1.0"
+description = "A review station for trading strategy research artifacts."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "The Pass contributors" }]
+dependencies = [
+  "jsonschema>=4.23",
+  "PyYAML>=6.0.2"
+]
+keywords = ["trading", "backtesting", "strategy-research", "risk", "automation"]
+
+[project.scripts]
+the-pass = "the_pass.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

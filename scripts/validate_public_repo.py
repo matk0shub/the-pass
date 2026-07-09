@@ -20,7 +20,15 @@ FORBIDDEN_PATTERNS = [
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
 ]
 
-IGNORED_DIRS = {".git", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv"}
+IGNORED_DIRS = {
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".venv",
+    "venv",
+}
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 
@@ -33,6 +41,8 @@ def iter_files() -> list[Path]:
     files: list[Path] = []
     for path in ROOT.rglob("*"):
         if any(part in IGNORED_DIRS for part in path.parts):
+            continue
+        if any(part.endswith(".egg-info") for part in path.parts):
             continue
         if path.is_file():
             files.append(path)
@@ -60,6 +70,18 @@ def validate_plugin_manifest() -> None:
     for field in ("displayName", "shortDescription", "longDescription", "developerName", "category"):
         if not interface.get(field):
             fail(f"plugin interface missing {field}")
+
+
+def validate_python_package() -> None:
+    pyproject_path = ROOT / "pyproject.toml"
+    if not pyproject_path.exists():
+        fail("missing pyproject.toml")
+    cli_path = ROOT / "src" / "the_pass" / "cli.py"
+    validator_path = ROOT / "src" / "the_pass" / "validator.py"
+    if not cli_path.exists():
+        fail("missing src/the_pass/cli.py")
+    if not validator_path.exists():
+        fail("missing src/the_pass/validator.py")
 
 
 def validate_skills() -> None:
@@ -193,6 +215,7 @@ def main() -> int:
         if path.suffix == ".json":
             validate_json(path)
     validate_plugin_manifest()
+    validate_python_package()
     validate_skills()
     validate_schemas()
     validate_example_package()
