@@ -15,5 +15,6 @@ Core artifacts:
 - `cost_waterfall.schema.json`
 - `verdict_report.schema.json`
 
-Future validators should accept YAML or JSON input, parse it into structured data, and
-validate against these schemas before a gate can pass.
+The implemented `the-pass validate` and `the-pass validate-package` commands accept YAML or
+JSON input, parse it into structured data, and validate against these schemas before a gate
+can pass.

@@ -48,5 +48,7 @@ python3 -m unittest discover -s tests
 the-pass validate-package examples/synthetic-breakout/package
 the-pass validate-package examples/synthetic-random-baseline/package
 the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
+the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
+the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
 the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 ```

@@ -14,6 +14,10 @@ from jsonschema.exceptions import SchemaError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from the_pass.validator import validate_artifact, validate_package  # noqa: E402
+
 PLACEHOLDER_MARKER = "[" + "TO" + "DO:"
 
 FORBIDDEN_PATTERNS = [
@@ -87,6 +91,13 @@ def validate_json(path: Path) -> None:
 
 def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def fail_validation_result(label: str, result) -> None:
+    if result.ok:
+        return
+    details = "; ".join(f"{issue.path}: {issue.message}" for issue in result.issues)
+    fail(f"{label} validation failed: {details}")
 
 
 def validate_plugin_manifest() -> None:
@@ -194,6 +205,20 @@ def validate_adapter_examples() -> None:
     if missing:
         fail(f"missing adapter examples: {', '.join(sorted(missing))}")
     validate_json(adapters_dir / "crypto-binance-spot-klines-source-note.json")
+    for name in (
+        "dummy-diagnostic.yaml",
+        "crypto-binance-spot-klines.yaml",
+        "generic-futures-contract.yaml",
+        "generic-prediction-market.yaml",
+    ):
+        fail_validation_result(
+            f"examples/adapters/{name}",
+            validate_artifact(adapters_dir / name, artifact_type="adapter"),
+        )
+    fail_validation_result(
+        "examples/adapters/crypto-binance-spot-klines-source-note.json",
+        validate_artifact(adapters_dir / "crypto-binance-spot-klines-source-note.json", artifact_type="source_note"),
+    )
 
 
 def validate_example_packages() -> None:
@@ -252,6 +277,7 @@ def validate_example_packages() -> None:
             fail(f"{example_name} verdict must stay {expected['verdict']}")
         if expected["verdict"] == "kill" and not verdict.get("kill_reason"):
             fail(f"{example_name} killed example must keep kill_reason")
+        fail_validation_result(f"examples/{example_name}/package", validate_package(package_dir))
 
 
 def validate_markdown_links() -> None:

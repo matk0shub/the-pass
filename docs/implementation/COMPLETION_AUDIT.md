@@ -17,6 +17,8 @@ complete. It does not claim that any trading strategy has edge.
 | 5 Adapter SDK | implemented | strict adapter schema, adapter contract checks, dummy adapter, non-compliant adapter unit test |
 | 6 First Real Adapter | implemented | diagnostic Binance spot klines adapter descriptor and source note; generic futures and prediction-market descriptors validate without core market logic |
 
+The latest tracked human-readable audit is [../../reports/AUDIT_2026-07-09.md](../../reports/AUDIT_2026-07-09.md).
+
 ## Local Completion Commands
 
 ```bash
