@@ -103,8 +103,32 @@ def main(argv: list[str] | None = None) -> int:
             print("public read-only adapter smoke passed")
         return 0
     except Exception as exc:
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "created_at": now_rfc3339(),
+                        "mode": "public_read_only",
+                        "network_opt_in": True,
+                        "status": "error",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                        "safety": {
+                            "authenticated_channels_used": False,
+                            "credentials_used": False,
+                            "writes_to_provider": False,
+                        },
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
         if args.format == "json":
-            print(json.dumps({"ok": False, "status": "error", "artifact_paths": [], "issues": [{"path": "$", "message": str(exc)}], "receipt_id": None}))
+            print(json.dumps({"ok": False, "status": "error", "artifact_paths": [str(args.output)] if args.output else [], "issues": [{"path": "$", "message": str(exc)}], "receipt_id": None}))
         else:
             print(f"public adapter smoke failed: {exc}", file=sys.stderr)
         return 1

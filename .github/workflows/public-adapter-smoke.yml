@@ -1,0 +1,50 @@
+name: Public Adapter Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install uv
+      - name: Install read-only adapter dependencies
+        run: uv sync --locked --extra data
+      - name: Run explicit network smoke
+        id: smoke
+        continue-on-error: true
+        run: uv run python scripts/smoke_public_adapters.py --output reports/network/public-adapter-smoke.json
+      - name: Archive evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: public-adapter-smoke
+          path: reports/network/public-adapter-smoke.json
+      - name: Open or update drift issue
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = "Public adapter contract drift";
+            const issues = await github.rest.issues.listForRepo({owner: context.repo.owner, repo: context.repo.repo, state: "open"});
+            const existing = issues.data.find(issue => issue.title === title);
+            const body = `Scheduled read-only smoke failed. Evidence: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            if (existing) {
+              await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body});
+            } else {
+              await github.rest.issues.create({owner: context.repo.owner, repo: context.repo.repo, title, body});
+            }
+      - name: Fail after evidence capture
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1

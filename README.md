@@ -49,9 +49,11 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 - [Main plan](docs/research/the-pass-plan.md)
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
 - [Machine-readable roadmap status](docs/implementation/roadmap-status.yaml)
+- [Remaining release and maintenance work](docs/implementation/REMAINING_WORK_PLAN.md)
 - [Implementation build plan](docs/implementation/BUILD_PLAN.md)
 - [Completion audit](docs/implementation/COMPLETION_AUDIT.md)
 - [Final implementation audit](reports/FINAL_IMPLEMENTATION_AUDIT_2026-07-10.md)
+- [v0.7.0 release audit](reports/RELEASE_AUDIT_0.7.0.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Skill contracts](docs/implementation/SKILL_CONTRACTS.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
@@ -67,6 +69,14 @@ See [docs/plugin/COMMANDS.md](docs/plugin/COMMANDS.md) for the full command cont
 - [Public-safe golden path example](examples/synthetic-breakout/)
 - [Public-safe killed baseline example](examples/synthetic-random-baseline/)
 - [Public release checklist](docs/public/RELEASE_CHECKLIST.md)
+- [Installation](docs/public/INSTALLATION.md)
+- [CLI contract](docs/public/CLI_CONTRACT.md)
+- [Schema compatibility](docs/public/SCHEMA_COMPATIBILITY.md)
+- [Release process](docs/public/RELEASE_PROCESS.md)
+- [Fixture refresh policy](docs/public/FIXTURE_REFRESH_POLICY.md)
+- [Framework performance policy](docs/public/PERFORMANCE_POLICY.md)
+- [Changelog](CHANGELOG.md)
+- [Outcome examples](examples/outcomes/README.md)
 
 ## Current State
 
@@ -83,12 +93,10 @@ The public framework is operational and ready for real research packages:
 - Package links must resolve to the exact canonical artifacts, and receipt verification checks
   both the hash chain and the current artifact bytes.
 
-The broader trading roadmap is tracked separately and must not be described as complete until
-its evidence gates pass.
-
-The H0, R0, D1, B2, and V3 framework gates have passed. P4 paper, automation, incident, and
-static-reporting capability is implemented, but `paper_gate` is blocked pending a real
-elapsed observation window. No strategy has been promoted.
+All framework milestones have passed their capability gates. Candidate gates remain separate:
+the included synthetic paper observation is deliberately blocked and no strategy has been
+promoted. That is expected behavior for a repository whose job is to test strategies, not to
+ship a pre-approved one.
 
 Run local validation:
 

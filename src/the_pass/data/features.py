@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Iterable
 
-from .contracts import CanonicalEvent, EventType, canonical_value, stable_fingerprint
+from .contracts import CanonicalEvent, EventType, stable_fingerprint
 
 
 @dataclass(frozen=True)
@@ -43,8 +43,7 @@ def build_bar_features(
             row["return_1"] = format(close / previous[event.instrument_id] - Decimal(1), "f")
         previous[event.instrument_id] = close
         rows.append(row)
-    canonical_rows = canonical_value(rows)
-    output_fingerprint = stable_fingerprint(canonical_rows)
+    output_fingerprint = stable_fingerprint(rows)
     manifest = {
         "schema_version": 2,
         "id": f"features-{output_fingerprint[:16]}",
@@ -56,4 +55,4 @@ def build_bar_features(
         "rows": len(rows),
         "output_fingerprint": output_fingerprint,
     }
-    return FeatureBuild(rows=canonical_rows, manifest=manifest)
+    return FeatureBuild(rows=rows, manifest=manifest)

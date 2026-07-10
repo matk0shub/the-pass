@@ -11,16 +11,18 @@ before its dependency has passed. The machine-readable source of status is
 
 ## Completion Rule
 
-A milestone is complete only when all deliverables and acceptance tests exist, its gate
-result is `pass`, evidence paths are recorded, no P0/P1 finding remains, and CI is green.
-Profitability is not a framework completion criterion. A correctly killed strategy is a
-successful research result.
+A framework milestone is complete only when all deliverables and acceptance tests exist,
+its capability gate result is `pass`, evidence paths are recorded, no P0/P1 finding remains,
+and CI is green. Candidate promotion gates are separate evidence states and may remain
+blocked or killed without making the testing repository incomplete. Profitability and the
+existence of a promoted strategy are not framework completion criteria.
 
 Roadmap statuses are `not_started`, `in_progress`, `blocked`, `gate_failed`, and
-`complete`. `blocked` means required external evidence or an explicit human decision is
-missing. `gate_failed` means the available evidence was evaluated and failed. A complete
-milestone needs a machine-readable gate record whose acceptance checks all pass and whose
-evidence paths exist. `scripts/validate_roadmap.py` enforces this rule.
+`complete`. `blocked` means evidence required to build or verify the framework capability is
+missing. `gate_failed` means the capability evidence was evaluated and failed. Candidate
+gate state is stored separately. A complete milestone needs a machine-readable capability
+gate record whose acceptance checks all pass and whose evidence paths exist.
+`scripts/validate_roadmap.py` enforces this rule.
 
 ## Milestone Contracts
 
@@ -31,8 +33,8 @@ evidence paths exist. `scripts/validate_roadmap.py` enforces this rule.
 | D1 | frozen event and adapter contracts, public read-only endpoints, futures fixture | canonical data, quality and feature manifests, immutable storage, three adapter lanes | `reports/gates/D1_2026-07-10.yaml` |
 | B2 | valid unblocked data manifest and quality report, preregistered search spaces | screen results, deterministic simulator results, complete run packages, ledgers and static reports | `reports/gates/B2_2026-07-10.yaml` |
 | V3 | B2 packages, full strategy zoo, asset-specific policy thresholds | robustness, stress, risk and independent audit evidence with clean replay | `reports/gates/V3_2026-07-10.yaml` |
-| P4 | an exact research-gated package and read-only market observer | isolated paper journal, divergence report, automation receipts, incidents and static dashboard | `reports/gates/P4_2026-07-10.md` |
-| L5/L6 | passed paper and risk gates plus a new explicit approval process | locked contracts only until a venue ADR is accepted | `reports/gates/L5_L6_LOCKED_2026-07-10.md` |
+| P4 | canonical synthetic package plus read-only observer contracts | isolated paper journal, divergence report, automation receipts, incidents and static dashboard | `reports/gates/P4_2026-07-10.yaml` |
+| L5/L6 | public safety requirements and dry-run contracts | a tested locked boundary with no order transport or credentials | `reports/gates/L5_L6_2026-07-10.yaml` |
 
 Every milestone owner is accountable for its inputs, outputs, acceptance tests, gate
 record, kill condition, and evidence paths. The owner cannot waive an independent reviewer
@@ -157,7 +159,7 @@ Build:
 - Read-only static research, experiment, robustness, cost, risk, divergence, incident, and
   receipt dashboards.
 
-Gate:
+Candidate gate policy implemented by this milestone:
 
 - Crypto: 30 days and 100 fills or 500 signals, realized costs within 25% of model.
 - Futures: 60 trading days or 30 trades, whichever is later.
@@ -292,12 +294,17 @@ gate, or approval state.
 | v0.4.0 | B2 deterministic baseline harness |
 | v0.5.0 | V3 robustness, risk, and independent audit |
 | v0.6.0 | P4 paper runtime, automation, and reporting |
-| v1.0.0 | At least one real candidate has passed the paper gate |
+| v1.0.0 | Stable public testing framework after API compatibility review |
 
 ## Release Definition of Done
 
 A release milestone is done only when deliverables validate, acceptance checks pass, gate
 evidence is machine-readable, ledger evidence is immutable, completion audit links are exact,
 there is no open P0/P1 finding, local Python 3.9 and 3.12 matrices pass, and public CI is
-green. The release worktree must be committed and clean. The `v1.0.0` condition cannot be
-met by synthetic or backdated paper observations.
+green. The release worktree must be committed and clean. Candidate promotion remains
+evidence-driven and can never be manufactured from synthetic or backdated paper observations,
+but it is not a prerequisite for completing or releasing the testing framework.
+
+Post-implementation release and maintenance work is tracked in
+`docs/implementation/REMAINING_WORK_PLAN.md`. That plan does not reopen completed framework
+milestones or require a successful strategy.

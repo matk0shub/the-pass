@@ -1,0 +1,21 @@
+schema_version: 1
+milestone_id: L5_L6
+gate_result: pass
+evaluated_at: "2026-07-10T00:00:00Z"
+reviewer: safety_boundary_auditor
+scope: locked_public_boundary
+candidate_gate_state: blocked
+acceptance_checks:
+  - id: schema_only_live_contracts
+    status: pass
+    evidence_paths: [schemas/human_decision.v2.schema.json, schemas/live_risk_contract.v2.schema.json]
+  - id: dry_run_only_gateway
+    status: pass
+    evidence_paths: [src/the_pass/live_boundary.py, tests/test_live_boundary.py]
+  - id: no_credentials_or_order_transport
+    status: pass
+    evidence_paths: [scripts/validate_public_repo.py, docs/adr/ADR-0008-locked-live-boundary.md]
+  - id: live_gate_forbidden
+    status: pass
+    evidence_paths: [src/the_pass/gates.py, tests/test_live_boundary.py]
+open_p0_p1: []

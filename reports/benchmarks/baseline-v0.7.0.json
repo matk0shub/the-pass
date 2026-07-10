@@ -1,0 +1,65 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "dependencies": {
+    "duckdb": "1.5.4",
+    "numpy": "2.5.1",
+    "pandas": "3.0.3",
+    "pyarrow": "24.0.0",
+    "scipy": "1.18.0"
+  },
+  "fixed_operations_seconds": {
+    "dashboard_build": 0.03803137497743592,
+    "ledger_verify": 0.0006633329903706908
+  },
+  "machine": {
+    "platform": "macOS-26.3-arm64-arm-64bit",
+    "processor": "arm",
+    "python": "3.12.12"
+  },
+  "purpose": "framework performance regression evidence; not strategy performance",
+  "results": [
+    {
+      "events": 10000,
+      "input_fingerprint": "336f09c741fe65bfb7468ef12ff9f7a781ee9a246f4a47e2726ae053055f0839",
+      "parquet_bytes": 579723,
+      "peak_python_bytes": 53933858,
+      "seconds": {
+        "deterministic_sort": 0.003462416003458202,
+        "features": 0.19989650003844872,
+        "generation": 0.39063033304410055,
+        "parquet_commit": 1.2041787500493228,
+        "quality": 0.23660454200580716,
+        "replay": 0.2532012079609558
+      }
+    },
+    {
+      "events": 100000,
+      "input_fingerprint": "a97b9b5a2a03ec298dd90f7f47446591113b36ed183cdc581e2556809f02a99f",
+      "parquet_bytes": 5813806,
+      "peak_python_bytes": 192541509,
+      "seconds": {
+        "deterministic_sort": 0.03258904197718948,
+        "features": 2.031157332996372,
+        "generation": 3.6124906670302153,
+        "parquet_commit": 8.020682665985078,
+        "quality": 2.3883637500111945,
+        "replay": 2.6528599170269445
+      }
+    },
+    {
+      "events": 1000000,
+      "input_fingerprint": "de615950266ccd5ded5dcf3674aabfb0cf631012f1b293370ffac16f1aa74d1e",
+      "parquet_bytes": 58076858,
+      "peak_python_bytes": 1925920331,
+      "seconds": {
+        "deterministic_sort": 0.3513120000134222,
+        "features": 20.281831708038226,
+        "generation": 37.10357366601238,
+        "parquet_commit": 80.69928462500684,
+        "quality": 24.43798779102508,
+        "replay": 26.25227758300025
+      }
+    }
+  ],
+  "schema_version": 1
+}

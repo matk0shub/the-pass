@@ -2,7 +2,7 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: passed for `main` on 2026-07-09.
+Status: release audit passed for `v0.7.0` on 2026-07-10.
 
 ## Repository Safety
 
@@ -39,6 +39,19 @@ Status: passed for `main` on 2026-07-09.
 - [x] SECURITY exists.
 - [x] CI validates the public scaffold.
 - [x] GitHub repository visibility is public only after this checklist passes.
+- [x] Python 3.9 and 3.12 pass the exact matrix recorded in the release audit.
+- [x] Ruff and `uv lock --check` pass.
+- [x] Wheel and sdist build without warnings.
+- [x] The wheel passes clean installation and CLI validation outside the checkout.
+- [x] Branch protection requires both Python CI contexts and pull-request review.
+- [x] Release publication is gated by `.github/workflows/release.yml`.
+
+Release evidence:
+
+- `reports/RELEASE_AUDIT_0.7.0.md`
+- `reports/benchmarks/baseline-v0.7.0.json`
+- `reports/network/public-adapter-smoke-v0.7.0.json`
+- `reports/network/research-links-v0.7.0.json`
 
 Evidence:
 

@@ -15,26 +15,42 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        run: python -m pip install uv
+      - name: Verify lock file
+        run: uv lock --check
       - name: Install package
-        run: python -m pip install -e ".[data,research]"
+        run: uv sync --locked --extra data --extra research --extra dev
+      - name: Lint
+        run: uv run ruff check .
       - name: Validate public repo scaffold
-        run: python scripts/validate_public_repo.py
+        run: uv run python scripts/validate_public_repo.py
       - name: Run unit tests
-        run: python -m unittest discover -s tests
+        run: uv run python -m unittest discover -s tests
       - name: Validate synthetic packages with CLI
         run: |
-          the-pass validate-package examples/synthetic-breakout/package
-          the-pass validate-package examples/synthetic-random-baseline/package
+          uv run the-pass validate-package examples/synthetic-breakout/package
+          uv run the-pass validate-package examples/synthetic-random-baseline/package
       - name: Validate adapter descriptors with CLI
         run: |
-          the-pass validate examples/adapters/dummy-diagnostic.yaml --type adapter
-          the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
-          the-pass validate examples/adapters/generic-futures-contract.yaml --type adapter
-          the-pass validate examples/adapters/generic-prediction-market.yaml --type adapter
-          the-pass validate examples/adapters/crypto-binance-spot-klines-source-note.json --type source_note
+          uv run the-pass validate examples/adapters/dummy-diagnostic.yaml --type adapter
+          uv run the-pass validate examples/adapters/crypto-binance-spot-klines.yaml --type adapter
+          uv run the-pass validate examples/adapters/generic-futures-contract.yaml --type adapter
+          uv run the-pass validate examples/adapters/generic-prediction-market.yaml --type adapter
+          uv run the-pass validate examples/adapters/crypto-binance-spot-klines-source-note.json --type source_note
       - name: Validate receipt ledger CLI
         run: |
-          the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
-          the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
-          the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
-          the-pass receipts --ledger /tmp/the-pass-ledger.jsonl
+          uv run the-pass receipts add examples/synthetic-breakout/package --ledger /tmp/the-pass-ledger.jsonl
+          uv run the-pass receipts add examples/synthetic-random-baseline/package --ledger /tmp/the-pass-ledger.jsonl
+          uv run the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
+          uv run the-pass receipts --ledger /tmp/the-pass-ledger.jsonl
+      - name: Build distributions
+        run: uv build
+      - name: Validate installed wheel
+        run: uv run python scripts/validate_distribution.py dist/the_pass-*.whl
+      - name: Upload tagged distributions
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v6
+        with:
+          name: the-pass-${{ matrix.python-version }}
+          path: dist/*

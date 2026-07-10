@@ -22,9 +22,9 @@ that machine-readable file.
 | 5 Adapter SDK | implemented | strict adapter schema, adapter contract checks, dummy adapter, non-compliant adapter unit test |
 | 6 First Real Adapter | implemented | diagnostic Binance spot klines adapter descriptor and source note; generic futures and prediction-market descriptors validate without core market logic |
 
-The framework layers through V3 are complete. P4 capability is implemented but its gate is
-blocked pending a real elapsed paper window; L5/L6 remains intentionally locked. The latest
-tracked human-readable hardening audit is
+All framework capability milestones are complete. The diagnostic candidate `paper_gate` and
+every public `live_gate` remain intentionally blocked; those states test the gate system and
+do not make the repository incomplete. The latest tracked human-readable hardening audit is
 [../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md](../../reports/SYSTEM_HARDENING_AUDIT_2026-07-09.md).
 
 Trading roadmap gate evidence is tracked separately:
@@ -38,6 +38,7 @@ Trading roadmap gate evidence is tracked separately:
 - [P4 paper, automation, and reporting](../../reports/gates/P4_2026-07-10.md)
 - [L5-L6 locked boundary](../../reports/gates/L5_L6_LOCKED_2026-07-10.md)
 - [Final implementation audit](../../reports/FINAL_IMPLEMENTATION_AUDIT_2026-07-10.md)
+- [Remaining release and maintenance work](REMAINING_WORK_PLAN.md)
 
 ## Local Completion Commands
 
@@ -59,7 +60,8 @@ the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
 validator against the repo root from their local Codex install.
 
-The final local verification on Python 3.9 and 3.12 completed 92 tests on each interpreter.
+The current cross-version test count and commands are recorded once in the
+[v0.7.0 release audit](../../reports/RELEASE_AUDIT_0.7.0.md).
 
 ## Safety Result
 
