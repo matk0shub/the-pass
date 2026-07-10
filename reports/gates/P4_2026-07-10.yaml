@@ -1,0 +1,21 @@
+schema_version: 1
+milestone_id: P4
+gate_result: pass
+evaluated_at: "2026-07-10T00:00:00Z"
+reviewer: paper_framework_auditor
+scope: framework_capability
+candidate_gate_state: blocked
+acceptance_checks:
+  - id: isolated_paper_runtime
+    status: pass
+    evidence_paths: [reports/p4/synthetic_observation/paper_run.json, tests/test_paper_automation.py]
+  - id: candidate_minimums_fail_closed
+    status: pass
+    evidence_paths: [reports/p4/synthetic_observation/divergence_report.json, scripts/validate_p4_framework.py]
+  - id: scheduler_neutral_automation
+    status: pass
+    evidence_paths: [automations/data-health.yaml, reports/automation/automation-b52cbf58cd6599838c14e951780384f84cf899f80d0299c0b6b2908bc17e12fb.json]
+  - id: static_read_only_reporting
+    status: pass
+    evidence_paths: [reports/dashboard/index.html, tests/test_paper_automation.py]
+open_p0_p1: []

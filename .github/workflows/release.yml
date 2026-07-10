@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        run: python -m pip install uv
+      - name: Install locked environment
+        run: uv sync --locked --extra data --extra research --extra dev
+      - name: Validate release candidate
+        run: |
+          uv lock --check
+          uv run ruff check .
+          uv run python scripts/validate_public_repo.py
+          uv run python -m unittest discover -s tests
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install uv
+      - name: Install locked environment
+        run: uv sync --locked --extra data --extra research
+      - name: Confirm tag and package version
+        run: uv run python -c 'import os,the_pass; assert "v" + the_pass.__version__ == os.environ["GITHUB_REF_NAME"]'
+      - name: Build and validate distributions
+        run: |
+          uv build
+          uv run python scripts/validate_distribution.py dist/the_pass-*.whl
+          sha256sum dist/* > SHA256SUMS
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/* SHA256SUMS reports/RELEASE_AUDIT_0.7.0.md \
+            --title "The Pass $GITHUB_REF_NAME" \
+            --notes-file docs/public/RELEASE_NOTES_v0.7.0.md \
+            --verify-tag

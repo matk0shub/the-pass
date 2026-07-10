@@ -303,6 +303,7 @@ class ParquetStoreTests(unittest.TestCase):
             )
             self.assertTrue((path / "events.parquet").is_file())
             self.assertEqual((path / "fingerprint.sha256").read_text(encoding="ascii").strip(), fingerprint)
+            self.assertEqual(fingerprint, stable_fingerprint([event.as_dict()]))
             with self.assertRaises(PartitionExistsError):
                 store.commit([event], source="fixture", venue="test", instrument="TEST", date="2024-01-01")
             try:

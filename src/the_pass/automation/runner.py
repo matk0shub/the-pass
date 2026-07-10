@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Sequence
 
 import yaml
 
 from the_pass.data.contracts import stable_fingerprint
-from the_pass.validator import validate_artifact
+from the_pass.incident import build_incident_report
+from the_pass.validator import parse_timestamp, validate_artifact
 
 
 AUTOMATION_COMMANDS = (
@@ -32,26 +39,73 @@ RETRYABLE_COMMANDS = {
     "weekly_research_summary",
 }
 REQUIRED_FORBIDDEN = {"gate_decision", "live_transaction", "credential_access"}
+ALERT_SINKS = {"local_incident_artifact"}
+SENSITIVE_INPUT_KEYS = {"api_key", "api_secret", "credential", "credentials", "password", "private_key", "secret"}
 
 
-def _default_executor(command: str, inputs: dict[str, Any], output_dir: Path) -> list[Path]:
-    output = output_dir / f"{command}-snapshot.json"
-    output.write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "command": command,
-                "inputs_fingerprint": stable_fingerprint(inputs),
-                "status": "complete",
-                "read_only_external_boundary": True,
-            },
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    return [output]
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _write_atomic(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def _write_json(path: Path, document: object) -> None:
+    _write_atomic(path, json.dumps(document, indent=2, sort_keys=True) + "\n")
+
+
+def _worker_outputs(staging: Path) -> list[Path]:
+    manifest_path = staging / "worker-result.json"
+    if not manifest_path.is_file():
+        raise RuntimeError("automation worker did not produce worker-result.json")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    values = manifest.get("outputs") if isinstance(manifest, dict) else None
+    if not isinstance(values, list) or not values:
+        raise RuntimeError("automation worker returned no outputs")
+    outputs = []
+    for value in values:
+        if not isinstance(value, str) or not value:
+            raise RuntimeError("automation worker output path is invalid")
+        path = (staging / value).resolve()
+        try:
+            path.relative_to(staging)
+        except ValueError as exc:
+            raise RuntimeError("automation worker output escapes staging") from exc
+        if not path.is_file():
+            raise RuntimeError(f"automation worker output does not exist: {value}")
+        outputs.append(path)
+    return outputs
+
+
+def _promote_outputs(staging: Path, output_dir: Path) -> list[Path]:
+    promoted = []
+    for source in _worker_outputs(staging):
+        relative = source.relative_to(staging)
+        target = output_dir / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(source, target)
+        promoted.append(target)
+    return promoted
+
+
+def _log_attempt(output_dir: Path, idempotency_key: str, attempt: int, stream: str, content: str) -> Path:
+    path = output_dir / f"automation-{idempotency_key}.attempt-{attempt}.{stream}.log"
+    _write_atomic(path, content[-4000:] if content else "")
+    return path
 
 
 def _within_allowed(output_dir: Path, workspace_root: Path, allowed_writes: list[str]) -> bool:
@@ -65,13 +119,24 @@ def _within_allowed(output_dir: Path, workspace_root: Path, allowed_writes: list
     return False
 
 
+def _contains_sensitive_input(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(
+            str(key).lower() in SENSITIVE_INPUT_KEYS or _contains_sensitive_input(child)
+            for key, child in value.items()
+        )
+    if isinstance(value, list):
+        return any(_contains_sensitive_input(child) for child in value)
+    return False
+
+
 def run_automation_spec(
     spec_path: Path,
     *,
     output_dir: Path,
     scheduled_for: str,
     workspace_root: Path,
-    executor: Callable[[str, dict[str, Any], Path], list[Path]] | None = None,
+    worker_command: Sequence[str] | None = None,
 ) -> tuple[dict[str, Any], Path]:
     spec_path = spec_path.resolve()
     workspace_root = workspace_root.resolve()
@@ -88,6 +153,12 @@ def run_automation_spec(
         raise ValueError(f"automation command is not whitelisted: {command}")
     if not REQUIRED_FORBIDDEN <= set(spec["forbidden_actions"]):
         raise ValueError("automation spec must forbid gate decisions, live transactions, and credential access")
+    if spec["alert_sink"] not in ALERT_SINKS:
+        raise ValueError(f"automation alert sink is not supported: {spec['alert_sink']}")
+    if _contains_sensitive_input(spec["inputs"]):
+        raise ValueError("automation inputs contain a credential-like field")
+    if parse_timestamp(scheduled_for) is None:
+        raise ValueError("scheduled_for must be an RFC 3339 timestamp")
     attempts_allowed = int(spec["retry_policy"]["max_attempts"])
     if attempts_allowed > 1 and command not in RETRYABLE_COMMANDS:
         raise ValueError(f"automation command is not retryable: {command}")
@@ -106,25 +177,92 @@ def run_automation_spec(
         return json.loads(run_path.read_text(encoding="utf-8")), run_path
     errors = []
     outputs: list[Path] = []
+    evidence_logs: list[Path] = []
     attempts = 0
-    runner = executor or _default_executor
+    started_at = _utc_now_iso()
+    command_prefix = list(worker_command or (sys.executable, "-m", "the_pass.automation.worker"))
+    inputs_path = output_dir / f"automation-{idempotency_key}.inputs.json"
+    _write_json(inputs_path, spec["inputs"])
     for attempt in range(1, attempts_allowed + 1):
         attempts = attempt
+        staging = output_dir / ".staging" / f"{idempotency_key}-{attempt}"
+        if staging.exists():
+            shutil.rmtree(staging)
+        staging.mkdir(parents=True)
         try:
-            outputs = runner(command, dict(spec["inputs"]), output_dir)
+            process = subprocess.run(
+                [
+                    *command_prefix,
+                    "--command",
+                    command,
+                    "--inputs",
+                    str(inputs_path),
+                    "--output-dir",
+                    str(staging),
+                    "--attempt",
+                    str(attempt),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=int(spec["timeout_seconds"]),
+                cwd=workspace_root,
+            )
+            if process.stdout:
+                evidence_logs.append(_log_attempt(output_dir, idempotency_key, attempt, "stdout", process.stdout))
+            if process.stderr:
+                evidence_logs.append(_log_attempt(output_dir, idempotency_key, attempt, "stderr", process.stderr))
+            if process.returncode != 0:
+                raise RuntimeError(f"worker exited {process.returncode}: {process.stderr.strip()}")
+            outputs = _promote_outputs(staging, output_dir)
             break
+        except subprocess.TimeoutExpired as exc:
+            stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+            stderr = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+            if stdout:
+                evidence_logs.append(_log_attempt(output_dir, idempotency_key, attempt, "stdout", stdout))
+            if stderr:
+                evidence_logs.append(_log_attempt(output_dir, idempotency_key, attempt, "stderr", stderr))
+            errors.append(f"TimeoutExpired: exceeded {spec['timeout_seconds']} seconds")
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")
-            if command not in RETRYABLE_COMMANDS:
-                break
-    status = "complete" if outputs else "failed"
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+        if command not in RETRYABLE_COMMANDS:
+            break
+    try:
+        inputs_path.unlink()
+    except FileNotFoundError:
+        pass
+
+    incident_path: Path | None = None
+    status = "complete" if outputs else "frozen"
+    if not outputs:
+        incident_path = output_dir / f"incident-{idempotency_key}.json"
+        incident = build_incident_report(
+            incident_id=f"automation-incident-{idempotency_key[:16]}",
+            severity="P2",
+            detected_at=_utc_now_iso(),
+            source=command,
+            summary=errors[-1] if errors else "automation produced no output",
+            evidence=[
+                f"automation_run:{run_path.name}",
+                f"alert_sink:{spec['alert_sink']}",
+                *(str(path.relative_to(workspace_root)) for path in evidence_logs),
+            ],
+            freeze_reason=spec["freeze_procedure"],
+        )
+        _write_json(incident_path, incident)
+        incident_validation = validate_artifact(incident_path, artifact_type="incident_report")
+        if not incident_validation.ok:
+            raise RuntimeError("generated automation incident does not validate")
     document = {
         "schema_version": 2,
         "id": f"automation-run-{idempotency_key[:16]}",
         "automation_spec": str(spec_path.relative_to(workspace_root)),
         "idempotency_key": idempotency_key,
-        "started_at": scheduled_for,
-        "finished_at": scheduled_for,
+        "started_at": started_at,
+        "finished_at": _utc_now_iso(),
         "attempts": attempts,
         "status": status,
         "outputs": [str(path.relative_to(workspace_root)) for path in outputs],
@@ -134,9 +272,16 @@ def run_automation_spec(
             "spec_fingerprint": stable_fingerprint(spec),
             "inputs_fingerprint": stable_fingerprint(spec["inputs"]),
             "forbidden_actions_enforced": True,
+            "process_isolated": True,
+            "timeout_seconds": spec["timeout_seconds"],
+            "staged_outputs_committed": bool(outputs),
+            "alert_sink": spec["alert_sink"],
+            "freeze_procedure": spec["freeze_procedure"],
+            "incident_report": str(incident_path.relative_to(workspace_root)) if incident_path else None,
+            "evidence_logs": [str(path.relative_to(workspace_root)) for path in evidence_logs],
         },
     }
-    run_path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _write_json(run_path, document)
     result = validate_artifact(run_path, artifact_type="automation_run")
     if not result.ok:
         raise RuntimeError("generated automation run does not validate")

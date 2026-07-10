@@ -1,0 +1,364 @@
+{
+  "created_at": "2026-07-10T06:35:12Z",
+  "network_opt_in": true,
+  "registry_mutated": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "final_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253",
+      "id": "pbo-cscv",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253"
+    },
+    {
+      "final_url": "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf",
+      "id": "deflated-sharpe",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf"
+    },
+    {
+      "final_url": "https://onlinelibrary.wiley.com/doi/abs/10.1111/1468-0262.00152",
+      "id": "white-reality-check",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://onlinelibrary.wiley.com/doi/abs/10.1111/1468-0262.00152"
+    },
+    {
+      "final_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=264569",
+      "id": "hansen-spa",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=264569"
+    },
+    {
+      "final_url": "https://www.nber.org/papers/w20592",
+      "id": "harvey-factor-zoo",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://www.nber.org/papers/w20592"
+    },
+    {
+      "final_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3257420",
+      "id": "afml-lecture",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3257420"
+    },
+    {
+      "final_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3104816",
+      "id": "ml-fund-failures",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3104816"
+    },
+    {
+      "final_url": "https://papers.ssrn.com/sol3/Delivery.cfm/4778909.pdf?abstractid=4778909",
+      "id": "oos-method-comparison",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://papers.ssrn.com/sol3/Delivery.cfm/4778909.pdf?abstractid=4778909"
+    },
+    {
+      "final_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=53501",
+      "id": "almgren-chriss",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=53501"
+    },
+    {
+      "final_url": "https://books.google.cz/books?id=Y0i7CgAAQBAJ&redir_esc=y",
+      "id": "market-microstructure-practice",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://books.google.com/books?id=Y0i7CgAAQBAJ"
+    },
+    {
+      "final_url": "https://www.bis.org/publ/work689.htm",
+      "id": "bis-arbitrage-costs",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://www.bis.org/publ/work689.htm"
+    },
+    {
+      "final_url": "https://w4.stern.nyu.edu/facdir/lpederse/papers/TimeSeriesMomentum.pdf",
+      "id": "time-series-momentum",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://w4.stern.nyu.edu/facdir/lpederse/papers/TimeSeriesMomentum.pdf"
+    },
+    {
+      "final_url": "https://research.cbs.dk/en/publications/a-century-of-evidence-on-trend-following-investing/",
+      "id": "century-trend",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://research.cbs.dk/en/publications/a-century-of-evidence-on-trend-following-investing/"
+    },
+    {
+      "final_url": "https://www.aqr.com/Insights/Research/Journal-Article/Trends-Everywhere",
+      "id": "trends-everywhere",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://www.aqr.com/Insights/Research/Journal-Article/Trends-Everywhere"
+    },
+    {
+      "final_url": "https://arxiv.org/abs/2310.11771",
+      "id": "perpetual-futures-pricing",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://arxiv.org/abs/2310.11771"
+    },
+    {
+      "final_url": "https://www.sciencedirect.com/science/article/pii/S2667096824000296",
+      "id": "crypto-systematic-mapping",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://www.sciencedirect.com/science/article/pii/S2667096824000296"
+    },
+    {
+      "final_url": "https://link.springer.com/article/10.1007/s10479-023-05627-5",
+      "id": "crypto-microstructure-review",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://link.springer.com/article/10.1007/s10479-023-05627-5"
+    },
+    {
+      "final_url": "https://www.berkshirehathaway.com/2024ar/2024ar.pdf",
+      "id": "berkshire-2024-letter",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://www.berkshirehathaway.com/2024ar/2024ar.pdf"
+    },
+    {
+      "final_url": "https://www.bridgewater.com/research-and-insights/the-all-weather-story",
+      "id": "bridgewater-all-weather",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://www.bridgewater.com/research-and-insights/the-all-weather-story"
+    },
+    {
+      "final_url": "https://oxfordstrat.com/trading-strategies/nr7/",
+      "id": "oxfordstrat-nr7-corpus",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://oxfordstrat.com/trading-strategies/nr7/"
+    },
+    {
+      "final_url": "https://alo.mit.edu/research-page/the-statistics-of-sharpe-ratios/",
+      "id": "lo-sharpe-statistics",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://alo.mit.edu/research-page/the-statistics-of-sharpe-ratios/"
+    },
+    {
+      "final_url": "https://www.tandfonline.com/doi/full/10.1080/01621459.1994.10476870",
+      "id": "stationary-bootstrap",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://doi.org/10.1080/01621459.1994.10476870"
+    },
+    {
+      "final_url": "https://researchonline.lse.ac.uk/id/eprint/119144/1/dp303.pdf",
+      "id": "data-snooping-technical-rules",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://eprints.lse.ac.uk/119144/1/dp303.pdf"
+    },
+    {
+      "final_url": "https://pages.stern.nyu.edu/~afrazzin/pdf/Trading%20Cost%20of%20Asset%20Pricing%20Anomalies%20-%20Frazzini%2C%20Israel%20and%20Moskowitz.pdf",
+      "id": "trading-costs-anomalies",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://pages.stern.nyu.edu/~afrazzin/pdf/Trading%20Cost%20of%20Asset%20Pricing%20Anomalies%20-%20Frazzini%2C%20Israel%20and%20Moskowitz.pdf"
+    },
+    {
+      "final_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3171204",
+      "id": "crypto-arbitrage-markets",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3171204"
+    },
+    {
+      "final_url": "https://research.cbs.dk/files/57294842/lasse_heje_pedersen_et_al_carry_acceptedmanuscript.pdf",
+      "id": "carry-cross-asset",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://research.cbs.dk/files/57294842/lasse_heje_pedersen_et_al_carry_acceptedmanuscript.pdf"
+    },
+    {
+      "final_url": "https://www.nber.org/papers/w24877",
+      "id": "risks-returns-crypto",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://www.nber.org/papers/w24877"
+    },
+    {
+      "final_url": "https://oxfordstrat.com/trading-strategies/opening-range-breakout/",
+      "id": "oxfordstrat-opening-range",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://oxfordstrat.com/trading-strategies/opening-range-breakout/"
+    },
+    {
+      "final_url": "https://oxfordstrat.com/trading-strategies/volatility-squeeze/",
+      "id": "oxfordstrat-volatility-squeeze",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://oxfordstrat.com/trading-strategies/volatility-squeeze/"
+    },
+    {
+      "final_url": "https://oxfordstrat.com/trading-strategies/adx/",
+      "id": "oxfordstrat-adx",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://oxfordstrat.com/trading-strategies/adx/"
+    },
+    {
+      "final_url": "https://oxfordstrat.com/trading-strategies/donchian-channel-2/",
+      "id": "oxfordstrat-donchian",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://oxfordstrat.com/trading-strategies/donchian-channel-2/"
+    },
+    {
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0304405X19301758",
+      "id": "novy-marx-trading-costs",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://doi.org/10.1016/j.jfineco.2019.07.002"
+    },
+    {
+      "final_url": "https://onlinelibrary.wiley.com/doi/10.1111/j.1540-6261.1970.tb00518.x",
+      "id": "fama-efficient-markets",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://doi.org/10.1111/j.1540-6261.1970.tb00518.x"
+    },
+    {
+      "final_url": "https://onlinelibrary.wiley.com/doi/10.1111/j.1540-6261.1992.tb04681.x",
+      "id": "brock-technical-rules",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://doi.org/10.1111/j.1540-6261.1992.tb04681.x"
+    },
+    {
+      "final_url": "https://onlinelibrary.wiley.com/doi/10.1111/j.1540-6261.1993.tb04702.x",
+      "id": "jegadeesh-titman-momentum",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://doi.org/10.1111/j.1540-6261.1993.tb04702.x"
+    },
+    {
+      "final_url": "https://onlinelibrary.wiley.com/doi/10.1111/jofi.12021",
+      "id": "value-momentum-everywhere",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://doi.org/10.1111/jofi.12021"
+    },
+    {
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0304405X16301490",
+      "id": "momentum-crashes",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://doi.org/10.1016/j.jfineco.2015.12.002"
+    },
+    {
+      "final_url": "https://doi.org/10.1016/j.jfineco.2010.07.010",
+      "id": "currency-momentum",
+      "status": "reachable",
+      "status_code": 404,
+      "url": "https://doi.org/10.1016/j.jfineco.2010.07.010"
+    },
+    {
+      "final_url": "https://doi.org/10.3905/jpm.2012.39.1.104",
+      "id": "vpin-flow-toxicity",
+      "status": "reachable",
+      "status_code": 404,
+      "url": "https://doi.org/10.3905/jpm.2012.39.1.104"
+    },
+    {
+      "final_url": "https://www.tandfonline.com/doi/abs/10.1080/14697688.2013.803148",
+      "id": "cont-order-book-impact",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://doi.org/10.1080/14697688.2013.803148"
+    },
+    {
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1386418112000328",
+      "id": "obizhaeva-wang-optimal-execution",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://doi.org/10.1016/j.finmar.2012.09.001"
+    },
+    {
+      "final_url": "https://www.tandfonline.com/doi/abs/10.1080/14697680903373692",
+      "id": "gatheral-no-dynamic-arbitrage",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://doi.org/10.1080/14697680903373692"
+    },
+    {
+      "final_url": "https://doi.org/10.1017/CBO9781316380952",
+      "id": "cartea-algorithmic-trading",
+      "status": "reachable",
+      "status_code": 404,
+      "url": "https://doi.org/10.1017/CBO9781316380952"
+    },
+    {
+      "final_url": "https://www.cmegroup.com/education/courses/introduction-to-futures/understanding-futures-expiration-contract-roll.html",
+      "id": "cme-futures-roll",
+      "status": "reachable",
+      "status_code": 403,
+      "url": "https://www.cmegroup.com/education/courses/introduction-to-futures/understanding-futures-expiration-contract-roll.html"
+    },
+    {
+      "final_url": "https://databento.com/docs/standards-and-conventions/symbology#continuous",
+      "id": "databento-continuous-symbology",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://databento.com/docs/standards-and-conventions/symbology#continuous"
+    },
+    {
+      "final_url": "https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/ws-streams/~",
+      "id": "binance-websocket-streams",
+      "status": "reachable",
+      "status_code": 202,
+      "url": "https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams"
+    },
+    {
+      "final_url": "https://docs.polymarket.com/market-data/websocket/market-channel",
+      "id": "polymarket-market-channel",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://docs.polymarket.com/developers/CLOB/websocket/market-channel"
+    },
+    {
+      "final_url": "https://help.polymarket.com/en/articles/13364518-how-are-prediction-markets-resolved",
+      "id": "polymarket-resolution",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://docs.polymarket.com/polymarket-learn/markets/how-are-markets-resolved"
+    },
+    {
+      "final_url": "https://docs.polymarket.com/trading/overview",
+      "id": "polymarket-fees",
+      "status": "reachable",
+      "status_code": 200,
+      "url": "https://docs.polymarket.com/developers/CLOB/introduction"
+    },
+    {
+      "final_url": "https://www.cftc.gov/LawRegulation/FederalRegister/finalrules/2023-13091.html",
+      "id": "cftc-hypothetical-performance",
+      "status": "reachable",
+      "status_code": 404,
+      "url": "https://www.cftc.gov/LawRegulation/FederalRegister/finalrules/2023-13091.html"
+    }
+  ],
+  "summary": {
+    "errors": 0,
+    "reachable": 50,
+    "restricted_or_missing_url": 18,
+    "total": 50
+  }
+}

@@ -421,6 +421,11 @@ def validate_example_packages() -> None:
         if expected["verdict"] == "kill" and not verdict.get("kill_reason"):
             fail(f"{example_name} killed example must keep kill_reason")
         fail_validation_result(f"examples/{example_name}/package", validate_package(package_dir))
+    revise = ROOT / "examples" / "outcomes" / "revise" / "verdict_report.yaml"
+    fail_validation_result(
+        "examples/outcomes/revise/verdict_report.yaml",
+        validate_artifact(revise, artifact_type="verdict_report"),
+    )
 
 
 def validate_markdown_links() -> None:

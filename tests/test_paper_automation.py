@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -55,6 +56,19 @@ class PaperRuntimeTests(unittest.TestCase):
 
 
 class AutomationTests(unittest.TestCase):
+    def run_fixture(self, root: Path, spec: dict, *, scheduled_for: str = "2026-07-10T00:00:00Z") -> tuple[dict, Path]:
+        (root / "automations").mkdir(exist_ok=True)
+        spec["allowed_writes"] = ["reports/automation"]
+        spec_path = root / "automations" / "fixture.yaml"
+        spec_path.write_text(yaml.safe_dump(spec, sort_keys=False), encoding="utf-8")
+        return run_automation_spec(
+            spec_path,
+            output_dir=root / "reports" / "automation",
+            scheduled_for=scheduled_for,
+            workspace_root=root,
+            worker_command=[sys.executable, str(ROOT / "tests" / "fixtures" / "automation_worker.py")],
+        )
+
     def test_all_required_job_specs_validate(self) -> None:
         specs = sorted((ROOT / "automations").glob("*.yaml"))
         self.assertEqual(len(specs), 9)
@@ -111,6 +125,65 @@ class AutomationTests(unittest.TestCase):
                     scheduled_for="2026-07-10T00:00:00Z",
                     workspace_root=root,
                 )
+
+    def test_credential_like_input_is_rejected_before_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = yaml.safe_load((ROOT / "automations" / "data-health.yaml").read_text(encoding="utf-8"))
+            spec["inputs"] = {"nested": {"api_key": "must-not-be-written"}}
+            with self.assertRaisesRegex(ValueError, "credential-like"):
+                self.run_fixture(root, spec)
+            output_root = root / "reports" / "automation"
+            inputs_files = list(output_root.glob("*.inputs.json")) if output_root.exists() else []
+
+        self.assertFalse(inputs_files)
+
+    def test_timeout_terminates_worker_and_creates_incident(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = yaml.safe_load((ROOT / "automations" / "data-health.yaml").read_text(encoding="utf-8"))
+            spec["inputs"] = {"fixture_behavior": "sleep", "sleep_seconds": 2}
+            spec["timeout_seconds"] = 1
+            spec["retry_policy"]["max_attempts"] = 1
+            document, _ = self.run_fixture(root, spec)
+            incident_path = root / document["receipt"]["incident_report"]
+            incident_valid = validate_artifact(incident_path, artifact_type="incident_report").ok
+
+        self.assertEqual(document["status"], "frozen")
+        self.assertEqual(document["attempts"], 1)
+        self.assertIn("TimeoutExpired", document["errors"][0])
+        self.assertTrue(incident_valid)
+        self.assertFalse(document["receipt"]["staged_outputs_committed"])
+
+    def test_retryable_worker_can_fail_once_then_commit_staged_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = yaml.safe_load((ROOT / "automations" / "data-health.yaml").read_text(encoding="utf-8"))
+            spec["inputs"] = {"fixture_behavior": "fail_once"}
+            document, _ = self.run_fixture(root, spec)
+            output = root / document["outputs"][0]
+            payload = json.loads(output.read_text(encoding="utf-8"))
+
+        self.assertEqual(document["status"], "complete")
+        self.assertEqual(document["attempts"], 2)
+        self.assertEqual(payload["attempt"], 2)
+        self.assertTrue(document["receipt"]["staged_outputs_committed"])
+        self.assertIsNone(document["receipt"]["incident_report"])
+
+    def test_partial_failed_output_is_not_promoted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = yaml.safe_load((ROOT / "automations" / "data-health.yaml").read_text(encoding="utf-8"))
+            spec["inputs"] = {"fixture_behavior": "partial_fail"}
+            spec["retry_policy"]["max_attempts"] = 1
+            document, _ = self.run_fixture(root, spec)
+            output_root = root / "reports" / "automation"
+            partial_exists = (output_root / "partial.json").exists()
+            staging_rows = list((output_root / ".staging").glob("**/*"))
+
+        self.assertEqual(document["status"], "frozen")
+        self.assertFalse(partial_exists)
+        self.assertFalse(staging_rows)
 
 
 class ReportingAndIncidentTests(unittest.TestCase):

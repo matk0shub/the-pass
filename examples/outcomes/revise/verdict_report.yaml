@@ -1,0 +1,23 @@
+schema_version: 2
+id: revise-example-v1
+run_receipt: run_receipt.json
+created_at: "2026-07-10T00:00:00Z"
+owner: framework_example
+verdict: revise
+summary: Execution assumptions need a conservative queue model before another run.
+gate_results:
+  universal_hard_gates: [artifact package valid]
+  asset_class_gates: [execution realism required]
+  failed_gates: [limit fill evidence incomplete]
+evidence:
+  metrics_report: metrics_report.json
+  cost_waterfall: cost_waterfall.json
+  data_manifest: data_manifest.json
+  source_notes: []
+risks:
+  statistical: []
+  execution: [optimistic queue position]
+  data: []
+  operational: []
+next_action: Version the StrategySpec and rerun with queue and adverse-selection haircuts.
+review_required_by: [execution_skeptic]

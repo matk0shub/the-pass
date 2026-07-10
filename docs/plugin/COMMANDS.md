@@ -24,6 +24,9 @@ folder name (`mise`, `research`, and so on), which Codex exposes as `/the-pass:<
 
 ## Shared Command Rules
 
+The machine-readable output and exit-code contract is defined in
+[CLI_CONTRACT.md](../public/CLI_CONTRACT.md).
+
 - Commands write structured artifacts where possible.
 - Commands cannot grant live approval.
 - Commands cannot hide missing evidence behind prose.

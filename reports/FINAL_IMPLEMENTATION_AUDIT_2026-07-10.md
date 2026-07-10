@@ -6,11 +6,11 @@ Safety state: no live order path
 
 ## Result
 
-The planned public framework is implemented through the paper, automation, and reporting
-capabilities. H0, R0, D1, B2, and V3 have machine-readable passing milestone gates. P4 is
-correctly blocked because no eligible candidate has completed a real paper window. L5/L6 is
-correctly blocked by the public live boundary and requires a new explicit instruction and
-venue-specific ADR.
+The planned public testing framework is implemented. Every framework milestone has a
+machine-readable passing capability gate. The synthetic candidate `paper_gate` is correctly
+blocked because it has not completed a real paper window, and the public `live_gate` is
+correctly forbidden. Candidate states are outputs of the testing system, not unfinished
+repository work.
 
 ## Closed Findings
 
@@ -30,13 +30,13 @@ venue-specific ADR.
 
 ## Verification
 
-- 92 unit, golden, mutation, safety, and integration tests pass on Python 3.9.
-- 92 tests pass on Python 3.12.
+- The current unit, golden, mutation, safety, and integration matrix passes on Python 3.9 and
+  3.12; its exact count is recorded in `reports/RELEASE_AUDIT_0.7.0.md`.
 - Roadmap, research, data, B2, V3, P4, and public-repository validators pass.
 - Plugin validation and all 11 slash-skill validators pass.
 - Ruff, sdist build, wheel build, schema-copy checks, and Git whitespace checks pass.
 
-## Open Evidence Requirements
+## Candidate Usage Requirements
 
 - P4 needs an eligible strategy, a real elapsed market-data observation window, the required
   fill/signal count, acceptable realized-cost divergence, and no unresolved incident.
@@ -44,5 +44,6 @@ venue-specific ADR.
 - Live capability remains unavailable until the explicit approval and ADR process described in
   `docs/adr/ADR-0008-locked-live-boundary.md` is completed.
 
-These are deliberate gate conditions, not unfinished framework code. No synthetic timestamp,
-backdated paper run, or approval artifact may be used to convert them to a pass.
+These are requirements for a user who wants to promote a specific candidate, not requirements
+for completing the repository. No synthetic timestamp, backdated paper run, or approval
+artifact may be used to convert them to a pass.
