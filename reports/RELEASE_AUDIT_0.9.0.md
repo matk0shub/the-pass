@@ -4,9 +4,10 @@ Audit date: 2026-07-10
 
 Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
-Publication state: release preparation is tracked in
-[PR #9](https://github.com/matk0shub/the-pass/pull/9). This record will be finalized with its
-required CI result and merge commit before the annotated `v0.9.0` tag is created.
+Publication state: [PR #9](https://github.com/matk0shub/the-pass/pull/9) passed both required
+contexts in [CI run 29109150235](https://github.com/matk0shub/the-pass/actions/runs/29109150235)
+and was administratively merged as `97ecdb6` under the documented owner exception. Publication
+still requires the annotated `v0.9.0` tag and successful release workflow.
 
 ## Review Exception
 
@@ -61,10 +62,10 @@ Detailed evidence:
 ## Publication Gates
 
 - [x] Local release matrix passes.
-- [ ] Release pull request passes both required Python contexts.
+- [x] Release pull request passes both required Python contexts.
 - [x] The owner explicitly authorized and required documentation of the administrative review
   exception because no second collaborator is available.
-- [ ] Release pull request is merged to `main` and its commit is recorded here.
+- [x] Release pull request is merged to `main` as `97ecdb6` and its commit is recorded here.
 - [ ] Annotated `v0.9.0` tag triggers `.github/workflows/release.yml`.
 - [ ] Release workflow validates Python 3.9/3.12 and publishes wheel, sdist, audit, and checksums.
 - [ ] Freshly downloaded assets pass checksum and clean-install verification.
