@@ -4,8 +4,9 @@ Audit date: 2026-07-10
 
 Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
-Publication state: release preparation is in progress. This record will be finalized with the
-release pull request and merge commit before the annotated `v0.9.0` tag is created.
+Publication state: release preparation is tracked in
+[PR #9](https://github.com/matk0shub/the-pass/pull/9). This record will be finalized with its
+required CI result and merge commit before the annotated `v0.9.0` tag is created.
 
 ## Review Exception
 
