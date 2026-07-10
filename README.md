@@ -218,7 +218,10 @@ the-pass agents dispatch templates/agent_task.yaml --output-dir reports/agents \
 
 Read-only tasks cannot write. Implementation tasks run in a disposable Git worktree and return an
 unapplied patch for the caller to review. Agents cannot apply patches, write protected governance
-paths, decide gates, approve live trading, recursively delegate, or retry a failed model call. See
+paths, decide gates, approve live trading, recursively delegate, or retry a failed model call.
+External provider calls are serialized; parallel work belongs inside bounded native subagents.
+User/project MCP servers, plugins, hooks, and connector settings are disabled for broker-managed
+provider processes. See
 [Cross-Runtime Orchestration](docs/plugin/CROSS_RUNTIME.md).
 
 ## Evidence Model

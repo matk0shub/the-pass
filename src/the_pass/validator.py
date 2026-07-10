@@ -662,11 +662,46 @@ def is_finite_number(value: Any) -> bool:
 
 
 def validate_agent_run_artifact(
-    document: dict[str, Any], schema_dir: Path
+    document: dict[str, Any], schema_dir: Path, artifact_path: Path
 ) -> list[ValidationIssue]:
     """Validate the embedded result and receipt-level consistency."""
 
     issues: list[ValidationIssue] = []
+    if document["caller_provider"] == document["target_provider"]:
+        issues.append(
+            ValidationIssue("$.target_provider", "must differ from caller_provider")
+        )
+    expected_cwd = (
+        "source_read_only" if document["mode"] == "read_only" else "detached_worktree"
+    )
+    if document["execution"]["cwd_strategy"] != expected_cwd:
+        issues.append(
+            ValidationIssue(
+                "$.execution.cwd_strategy", f"must be {expected_cwd} for {document['mode']}"
+            )
+        )
+    try:
+        started = datetime.fromisoformat(
+            document["execution"]["started_at"].replace("Z", "+00:00")
+        )
+        finished = datetime.fromisoformat(
+            document["execution"]["finished_at"].replace("Z", "+00:00")
+        )
+        if started > finished:
+            issues.append(
+                ValidationIssue("$.execution.finished_at", "must not precede started_at")
+            )
+    except (TypeError, ValueError):
+        pass
+    if (
+        document["status"] in {"complete", "blocked"}
+        and document["execution"]["exit_code"] != 0
+    ):
+        issues.append(
+            ValidationIssue(
+                "$.execution.exit_code", "must be zero for complete or blocked runs"
+            )
+        )
     result = document["result"]
     fingerprint = document["result_fingerprint"]
     if result is None:
@@ -722,6 +757,49 @@ def validate_agent_run_artifact(
                     "$.patch.changed_paths", "must equal result.changed_paths"
                 )
             )
+        patch_path = Path(patch["path"])
+        if not patch_path.is_absolute():
+            issues.append(ValidationIssue("$.patch.path", "must be an absolute path"))
+        elif (
+            patch_path.name != f"agent-patch-{document['run_id']}.patch"
+            or patch_path.parent.resolve() != artifact_path.parent.resolve()
+        ):
+            issues.append(
+                ValidationIssue(
+                    "$.patch.path", "must use the run ID beside the agent_run receipt"
+                )
+            )
+        elif patch_path.is_symlink() or not patch_path.is_file():
+            issues.append(
+                ValidationIssue("$.patch.path", "must identify an existing regular file")
+            )
+        else:
+            digest = hashlib.sha256()
+            total = 0
+            maximum = document["limits"]["max_output_bytes"]
+            try:
+                with patch_path.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        total += len(chunk)
+                        if total > maximum:
+                            issues.append(
+                                ValidationIssue(
+                                    "$.patch.path", "patch exceeds the recorded output limit"
+                                )
+                            )
+                            break
+                        digest.update(chunk)
+            except OSError as exc:
+                issues.append(
+                    ValidationIssue("$.patch.path", f"cannot read patch evidence: {exc}")
+                )
+            else:
+                if total <= maximum and digest.hexdigest() != patch["sha256"]:
+                    issues.append(
+                        ValidationIssue(
+                            "$.patch.sha256", "must fingerprint the current patch bytes"
+                        )
+                    )
     elif (
         result is not None
         and document["status"] in {"complete", "blocked"}
@@ -835,7 +913,7 @@ def validate_artifact(
         }:
             issues.extend(validate_workflow_artifact(detected_type, document))
         elif detected_type == "agent_run":
-            issues.extend(validate_agent_run_artifact(document, schema_dir))
+            issues.extend(validate_agent_run_artifact(document, schema_dir, artifact_path))
 
     schema_id = schema.get("$id")
     return ValidationResult(

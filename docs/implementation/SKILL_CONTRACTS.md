@@ -22,7 +22,9 @@ subagents, while cross-provider work must pass a validated `agent_task` through 
 Research and review delegation is read-only. Implementation delegation runs in a disposable Git
 worktree and returns an unapplied patch. Delegation depth is one; agents cannot retry, recurse,
 write protected authority paths, alter ledgers, decide a gate, or represent human approval. The
-caller validates every result and remains accountable for applying and testing changes.
+caller validates every result and remains accountable for applying and testing changes. External
+provider calls are serialized and stripped of user/project connectors, MCP servers, unrelated
+plugins, hooks, and rules; native subagents provide bounded parallelism inside one call.
 
 ## Skill Matrix
 

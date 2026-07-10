@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import tempfile
 import time
@@ -113,9 +114,13 @@ def load_agent_policy() -> dict[str, Any]:
         raise AgentOrchestrationError("agent orchestration policy must define codex and claude")
     if policy["limits"].get("attempts") != 1:
         raise AgentSafetyError("external provider attempts must remain one")
+    if policy["limits"].get("max_concurrent_external_dispatches") != 1:
+        raise AgentSafetyError("external provider dispatches must remain serialized")
     safety = policy["safety"]
     required_false = {
         "provider_retryable",
+        "provider_user_config_allowed",
+        "provider_mcp_allowed",
         "auto_apply_patch",
         "gate_decision_write_allowed",
         "live_code_write_allowed",
@@ -124,6 +129,8 @@ def load_agent_policy() -> dict[str, Any]:
     }
     if any(safety.get(name) is not False for name in required_false):
         raise AgentSafetyError("agent orchestration safety flags must remain false")
+    if safety.get("exclusive_external_dispatch") is not True:
+        raise AgentSafetyError("external provider dispatch lock must remain enabled")
     return policy
 
 
@@ -153,6 +160,10 @@ def _path_matches(path: str, prefix: str) -> bool:
     return path == prefix or path.startswith(prefix.rstrip("/") + "/")
 
 
+def _protected_path_matches(path: str, prefix: str) -> bool:
+    return _path_matches(path.casefold(), prefix.casefold())
+
+
 def _path_uses_symlink(root: Path, relative: str) -> bool:
     current = root
     for part in PurePosixPath(relative).parts:
@@ -165,14 +176,96 @@ def _path_uses_symlink(root: Path, relative: str) -> bool:
 
 
 def _runtime_depth(environment: Mapping[str, str] | None = None) -> int:
-    raw = (environment or os.environ).get(DEPTH_ENV, "0")
+    values = [os.environ.get(DEPTH_ENV, "0")]
+    if environment is not None and DEPTH_ENV in environment:
+        values.append(environment[DEPTH_ENV])
+    depths = []
+    for raw in values:
+        try:
+            depth = int(raw)
+        except (TypeError, ValueError) as exc:
+            raise AgentSafetyError(f"{DEPTH_ENV} must be an integer") from exc
+        if depth < 0:
+            raise AgentSafetyError(f"{DEPTH_ENV} cannot be negative")
+        depths.append(depth)
+    return max(depths)
+
+
+@contextmanager
+def _exclusive_dispatch_lock() -> Iterator[None]:
+    """Serialize external providers so a delegated process cannot recurse in parallel."""
+
+    if os.name == "posix":
+        import pwd
+
+        account_home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+    else:
+        account_home = Path.home()
+    lock_dir = account_home
+    for component in (".cache", "the-pass", "locks"):
+        lock_dir = lock_dir / component
+        if lock_dir.is_symlink():
+            raise AgentSafetyError("agent dispatch lock directory cannot use symlinks")
+        lock_dir.mkdir(mode=0o700, exist_ok=True)
+        metadata = lock_dir.stat()
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise AgentSafetyError("agent dispatch lock path must be a directory")
+        if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
+            raise AgentSafetyError("agent dispatch lock directory has an unexpected owner")
+    if hasattr(os, "chmod"):
+        os.chmod(lock_dir, 0o700)
+    path = lock_dir / "external-dispatch.lock"
+    flags = os.O_RDWR | os.O_CREAT
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
     try:
-        depth = int(raw)
-    except (TypeError, ValueError) as exc:
-        raise AgentSafetyError(f"{DEPTH_ENV} must be an integer") from exc
-    if depth < 0:
-        raise AgentSafetyError(f"{DEPTH_ENV} cannot be negative")
-    return depth
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise AgentSafetyError("cannot securely open the agent dispatch lock") from exc
+    acquired = False
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise AgentSafetyError("agent dispatch lock must be a regular file")
+        if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
+            raise AgentSafetyError("agent dispatch lock has an unexpected owner")
+        if hasattr(os, "fchmod"):
+            os.fchmod(descriptor, 0o600)
+        if os.name == "nt":
+            import msvcrt
+
+            if metadata.st_size == 0:
+                os.write(descriptor, b"0")
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            try:
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise AgentSafetyError(
+                    "another external agent dispatch is active; nested or concurrent dispatch is forbidden"
+                ) from exc
+        else:
+            import fcntl
+
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise AgentSafetyError(
+                    "another external agent dispatch is active; nested or concurrent dispatch is forbidden"
+                ) from exc
+        acquired = True
+        yield
+    finally:
+        if acquired:
+            if os.name == "nt":
+                import msvcrt
+
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
 
 
 def _forbidden_objective(task: Mapping[str, Any], policy: Mapping[str, Any]) -> str | None:
@@ -257,7 +350,11 @@ def validate_agent_task_file(
         raise AgentSafetyError("worktree_patch tasks require allowed_write_paths")
     protected = tuple(str(value) for value in policy["protected_paths"])
     for relative in allowed:
-        if any(_path_matches(relative, item) or _path_matches(item, relative) for item in protected):
+        if any(
+            _protected_path_matches(relative, item)
+            or _protected_path_matches(item, relative)
+            for item in protected
+        ):
             raise AgentSafetyError(f"allowed write path intersects protected path: {relative}")
         if _path_uses_symlink(workspace_root, relative):
             raise AgentSafetyError(f"allowed write path uses a symlink: {relative}")
@@ -323,11 +420,39 @@ def build_provider_argv(
             *prefix,
             "exec",
             "--ephemeral",
+            "--ignore-user-config",
+            "--ignore-rules",
             "--json",
             "--color",
             "never",
             "--sandbox",
             sandbox,
+            "--disable",
+            "apps",
+            "--disable",
+            "browser_use",
+            "--disable",
+            "computer_use",
+            "--disable",
+            "hooks",
+            "--disable",
+            "image_generation",
+            "--disable",
+            "multi_agent",
+            "--disable",
+            "plugins",
+            "--config",
+            "mcp_servers={}",
+            "--config",
+            "hooks={}",
+            "--config",
+            "plugins={}",
+            "--config",
+            "project_doc_max_bytes=0",
+            "--config",
+            "project_doc_fallback_filenames=[]",
+            "--config",
+            "allow_login_shell=false",
             "--cd",
             str(execution_root),
             "--output-schema",
@@ -347,6 +472,13 @@ def build_provider_argv(
             json.dumps(_result_schema(), sort_keys=True, separators=(",", ":")),
             "--max-budget-usd",
             str(task["max_budget_usd"]),
+            "--setting-sources",
+            "",
+            "--strict-mcp-config",
+            "--mcp-config",
+            '{"mcpServers":{}}',
+            "--no-chrome",
+            "--disable-slash-commands",
         ]
         plugin_root = _plugin_root(context.workspace_root)
         if plugin_root is not None:
@@ -359,11 +491,11 @@ def build_provider_argv(
                     "--agent",
                     "the-pass:coordinator",
                     "--permission-mode",
-                    "plan",
+                    "acceptEdits",
                     "--tools",
-                    "Read,Glob,Grep,Agent(researcher),Agent(reviewer)",
+                    "Agent(the-pass:researcher),Agent(the-pass:reviewer)",
                     "--disallowedTools",
-                    "Write,Edit,Bash,Agent(implementer),Agent(coordinator)",
+                    "Write,Edit,Bash,Agent(the-pass:implementer),Agent(the-pass:coordinator)",
                 ]
             )
         elif task["mode"] == "read_only":
@@ -464,6 +596,20 @@ def _terminate(process: subprocess.Popen) -> None:
         process.wait()
 
 
+def _terminate_remaining_process_group(process: subprocess.Popen) -> None:
+    if os.name == "nt":
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    time.sleep(0.05)
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
 def _run_bounded_process(
     argv: Sequence[str],
     *,
@@ -508,6 +654,7 @@ def _run_bounded_process(
                     break
                 time.sleep(0.05)
             returncode = process.poll()
+            _terminate_remaining_process_group(process)
         stdout_bytes = stdout_path.read_bytes()
         stderr_bytes = stderr_path.read_bytes()
         if len(stdout_bytes) + len(stderr_bytes) > max_output_bytes:
@@ -552,6 +699,11 @@ def _execution_workspace(
     worktree = temporary / "workspace"
     try:
         _git(git_root, "worktree", "add", "--detach", str(worktree), "HEAD")
+        for relative in context.allowed_write_paths:
+            if _path_uses_symlink(worktree, relative):
+                raise AgentSafetyError(
+                    f"allowed write path uses a symlink in the detached worktree: {relative}"
+                )
         yield worktree, "detached_worktree"
     finally:
         _git(git_root, "worktree", "remove", "--force", str(worktree), check=False)
@@ -574,7 +726,7 @@ def _validate_changed_paths(context: TaskContext, changed_paths: Sequence[str]) 
     protected = [str(value) for value in context.policy["protected_paths"]]
     for path in changed_paths:
         normalized = _relative_path(path, label="changed_path")
-        if any(_path_matches(normalized, prefix) for prefix in protected):
+        if any(_protected_path_matches(normalized, prefix) for prefix in protected):
             raise AgentSafetyError(f"agent changed protected path: {normalized}")
         if not any(_path_matches(normalized, prefix) for prefix in context.allowed_write_paths):
             raise AgentSafetyError(f"agent changed path outside allowed scope: {normalized}")
@@ -659,19 +811,14 @@ def _parse_provider_result(
             except json.JSONDecodeError:
                 fences = list(
                     re.finditer(
-                        r"```(?:json)?\s*(.*?)\s*```",
+                        r"```json\s*(.*?)\s*```",
                         result_text,
                         flags=re.IGNORECASE | re.DOTALL,
                     )
                 )
-                if len(fences) != 1:
+                if len(fences) != 1 or result_text.count("```") != 2:
                     raise AgentOrchestrationError(
                         "claude result string does not contain one unambiguous JSON document"
-                    )
-                outside = result_text[: fences[0].start()] + result_text[fences[0].end() :]
-                if "```" in outside or "{" in outside or "}" in outside:
-                    raise AgentOrchestrationError(
-                        "claude result string contains ambiguous content outside the JSON fence"
                     )
                 document = json.loads(fences[0].group(1))
         metadata["session_id"] = payload.get("session_id")
@@ -830,22 +977,14 @@ def _write_run(path: Path, document: dict[str, Any]) -> None:
         raise AgentOrchestrationError(f"generated agent run is invalid: {details}")
 
 
-def dispatch_agent_task(
-    task_path: Path,
+def _dispatch_agent_task_locked(
+    context: TaskContext,
     *,
     output_dir: Path,
-    execute: bool,
-    environment: Mapping[str, str] | None = None,
     provider_commands: Mapping[str, Sequence[str]] | None = None,
 ) -> tuple[dict[str, Any], Path, int]:
-    """Execute exactly one external provider task and create a write-once receipt."""
+    """Execute one already validated task while holding the global dispatch lock."""
 
-    if not execute:
-        raise AgentSafetyError("external agent dispatch requires explicit --execute")
-    context = validate_agent_task_file(task_path, environment=environment)
-    max_depth = int(context.policy["limits"]["max_cross_provider_depth"])
-    if context.runtime_depth >= max_depth:
-        raise AgentSafetyError("cross-provider delegation depth is exhausted")
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     run_id = "agent_" + uuid.uuid4().hex
@@ -873,7 +1012,9 @@ def dispatch_agent_task(
         duration_ms=0,
     )
     argv: list[str] = []
-    cwd_strategy = "source_read_only"
+    cwd_strategy = (
+        "source_read_only" if context.task["mode"] == "read_only" else "detached_worktree"
+    )
     try:
         with _execution_workspace(context, run_id) as (execution_root, cwd_strategy):
             argv = build_provider_argv(
@@ -936,7 +1077,13 @@ def dispatch_agent_task(
     except AgentSafetyError as exc:
         status, exit_code = "forbidden", 3
         issues.append(str(exc))
-    except (AgentOrchestrationError, json.JSONDecodeError, OSError) as exc:
+    except (
+        AgentOrchestrationError,
+        json.JSONDecodeError,
+        OSError,
+        subprocess.SubprocessError,
+        UnicodeError,
+    ) as exc:
         issues.append(str(exc))
     finally:
         try:
@@ -992,12 +1139,48 @@ def dispatch_agent_task(
     return run, run_path, exit_code
 
 
+def dispatch_agent_task(
+    task_path: Path,
+    *,
+    output_dir: Path,
+    execute: bool,
+    environment: Mapping[str, str] | None = None,
+    provider_commands: Mapping[str, Sequence[str]] | None = None,
+) -> tuple[dict[str, Any], Path, int]:
+    """Execute exactly one external provider task and create a write-once receipt."""
+
+    if not execute:
+        raise AgentSafetyError("external agent dispatch requires explicit --execute")
+    context = validate_agent_task_file(task_path, environment=environment)
+    max_depth = int(context.policy["limits"]["max_cross_provider_depth"])
+    if context.runtime_depth >= max_depth:
+        raise AgentSafetyError("cross-provider delegation depth is exhausted")
+    resolved_output = output_dir.resolve()
+    try:
+        relative_output = resolved_output.relative_to(context.workspace_root).as_posix()
+    except ValueError:
+        relative_output = None
+    if relative_output is not None and any(
+        _protected_path_matches(relative_output, str(prefix))
+        for prefix in context.policy["protected_paths"]
+    ):
+        raise AgentSafetyError(
+            f"agent output directory is inside a protected path: {relative_output}"
+        )
+    with _exclusive_dispatch_lock():
+        return _dispatch_agent_task_locked(
+            context,
+            output_dir=resolved_output,
+            provider_commands=provider_commands,
+        )
+
+
 def critical_paths_are_protected(policy: Mapping[str, Any] | None = None) -> bool:
     """Return whether every declared critical authority is protected from agent patches."""
 
     active = dict(policy or load_agent_policy())
     protected = [str(value) for value in active["protected_paths"]]
     return all(
-        any(_path_matches(str(path), prefix) for prefix in protected)
+        any(_protected_path_matches(str(path), prefix) for prefix in protected)
         for path in active["critical_authority_paths"]
     )

@@ -99,4 +99,7 @@ requires the explicit `--execute` flag and writes a create-only `agent_run` rece
 Delegation is depth one. A delegated task cannot dispatch another agent, retry itself, approve a
 gate, alter governance or live-safety files, or apply its own patch. Read-only tasks return
 structured findings; implementation tasks run in a disposable worktree and return an unapplied
-patch. The caller remains responsible for reviewing, applying, testing, and recording any change.
+patch. External provider calls are serialized per local user, while bounded native subagents may
+parallelize work inside one call. Provider user settings, MCP servers, connectors, unrelated
+plugins, and hooks are excluded. The caller remains responsible for reviewing, applying, testing,
+and recording any change.

@@ -227,8 +227,17 @@ def validate_plugin_manifest() -> None:
             metadata.get("isolation") != "worktree" or not {"Bash", "Agent"} <= disallowed
         ):
             fail("Claude implementer must use worktree isolation and deny Bash/Agent")
-        if name == "coordinator" and "Agent(" not in tools:
-            fail("Claude coordinator must use a named Agent allowlist")
+        if name == "coordinator" and not {
+            "Agent(the-pass:researcher",
+            "the-pass:implementer",
+            "the-pass:reviewer)",
+        } <= {part.strip() for part in tools.split(",")}:
+            fail("Claude coordinator must use the scoped The Pass Agent allowlist")
+        if name == "coordinator" and any(
+            tool in {part.strip() for part in tools.split(",")}
+            for tool in {"Read", "Glob", "Grep", "Write", "Edit", "Bash"}
+        ):
+            fail("Claude coordinator must not expose direct file or shell tools")
 
 
 def validate_python_package() -> None:
@@ -424,6 +433,12 @@ def validate_packaged_policy() -> None:
         fail("packaged agent policy differs from config/agent-orchestration.v1.yaml")
     if not critical_paths_are_protected(yaml.safe_load(root_agent_policy.read_text(encoding="utf-8"))):
         fail("agent policy does not protect every declared critical authority path")
+    agent_policy = yaml.safe_load(root_agent_policy.read_text(encoding="utf-8"))
+    if (
+        agent_policy["limits"].get("max_concurrent_external_dispatches") != 1
+        or agent_policy["safety"].get("exclusive_external_dispatch") is not True
+    ):
+        fail("agent policy must serialize external provider dispatches")
     validate_skill_pipeline()
 
 

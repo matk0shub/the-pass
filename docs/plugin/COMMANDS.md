@@ -66,6 +66,10 @@ are separate append-only governance attachments and cannot be overwritten or ret
   work must use `the-pass agents inspect` and an explicit `agents dispatch --execute` call.
 - Delegation depth is one. Delegated agents cannot spawn another provider task or recursively invoke
   the coordinator.
+- External provider calls are serialized per local user. Parallel work uses bounded native
+  subagents inside the active provider call.
+- Broker-managed providers run without user/project MCP servers, connectors, unrelated plugins,
+  hooks, rules, or provider-native multi-agent features.
 - Read-only delegates return evidence only. Write delegates return an unapplied worktree patch; the
   caller reviews and applies it.
 - No agent may write gate decisions, approval state, ledgers, orchestration policy, protected safety

@@ -41,6 +41,10 @@ access, autonomous gate approval, or an always-running agent service.
     tests use fixture executables.
 11. Neither provider is allowed to use dangerous permission bypass flags through the broker.
 12. Version `0.9.0` is a minor release because the Python and plugin interfaces are additive.
+13. External provider dispatch is serialized by a per-user process lock. Parallel work uses native
+    subagents inside one bounded provider call; a second broker call fails closed.
+14. Broker-managed providers do not load user/project MCP servers, connectors, unrelated plugins,
+    hooks, rules, or provider-side multi-agent features.
 
 ## 3. Supported User Flows
 
@@ -121,11 +125,12 @@ Claude plugin agents:
 | `researcher` | source and repository evidence collection | read/search/web tools | none |
 | `implementer` | scoped code or artifact proposal | read/search/edit/write | isolated worktree only |
 | `reviewer` | adversarial evidence and code review | read/search | none |
-| `coordinator` | bounded routing when used as the session's main agent | read/search and named Agent tools | none directly |
+| `coordinator` | bounded routing when used as the session's main agent | scoped named Agent tools only | none directly |
 
 All definitions set a finite `maxTurns`. Reviewer and researcher deny write tools. The coordinator
 may spawn only the three named plugin agents when selected as the main session agent with
-`claude --agent`; it must not itself be spawned as a subagent. Specialists receive no `Agent`
+`claude --agent`; it has no direct read/write/search tools and must not itself be spawned as a
+subagent. Specialists receive no `Agent`
 tool, so they form one native delegation level and cannot recursively spawn another subagent.
 
 Codex does not receive a second, incompatible agent-definition format. The shared skills tell
@@ -229,6 +234,8 @@ All commands support `--format text|json` and the standard JSON envelope.
 - Use `subprocess` argv arrays with `shell=False`.
 - Pass the prompt through stdin, not a shell command line.
 - Set a minimal child environment plus recursion metadata.
+- Hold the exclusive external-dispatch lock until provider descendants are terminated and the
+  receipt is finalized.
 - Enforce timeout, output cap, and one attempt.
 - Validate structured output before writing a successful receipt.
 - Return exit `0` for a complete validated result, `2` for a valid blocked result, `1` for invalid
@@ -250,6 +257,9 @@ Allowed invocation characteristics:
 - no `--dangerously-bypass-approvals-and-sandbox`;
 - no extra writable directories;
 - no session resume.
+- ignore user config and execution rules; clear MCP, hook, and plugin configuration;
+- disable provider apps, browser/computer use, hooks, unrelated plugins, image generation, and
+  provider-native multi-agent features.
 
 ### 8.2 Claude adapter
 
@@ -261,18 +271,22 @@ Allowed invocation characteristics:
 - `--plugin-dir` pointing to The Pass plugin;
 - read-only roles use `--permission-mode plan --tools Read,Glob,Grep` plus
   `--disallowedTools Write,Edit,Bash,Agent`;
-- broker-managed native delegation replaces the blanket Agent denial with an explicit
-  `researcher|reviewer` allowlist and explicitly denies `implementer|coordinator`;
+- broker-managed native delegation uses `acceptEdits` only to permit tool execution, while its
+  tool allowlist contains only scoped `researcher|reviewer` agents and explicitly denies direct
+  file/shell tools plus `implementer|coordinator`;
 - worktree implementation uses edit/write tools without unrestricted Bash;
 - `--max-budget-usd` always set from the bounded task/policy;
 - no `--dangerously-skip-permissions`;
 - no session resume or remote control.
+- load no user/project/local setting sources, use an empty strict MCP configuration, disable Chrome
+  and slash commands, and load only the explicit The Pass plugin.
 
 Provider stdout parsers accept only documented final-result envelopes and fail closed on malformed
 or ambiguous output. Claude's documented `result` string fallback may contain either the raw JSON
-object or exactly one JSON code fence; surrounding prose is ignored only when it contains no second
-fence or competing JSON object. Unknown event fields are ignored, but required result fields are
-never inferred and the extracted object still receives full schema and semantic validation.
+object or exactly one explicitly labelled `json` code fence; surrounding prose is non-authoritative
+and ignored when no second fence exists. Unknown event fields are ignored, but required result
+fields are never inferred and the extracted object still receives full schema and semantic
+validation.
 
 ## 9. Worktree Patch Isolation
 
@@ -281,7 +295,8 @@ For `worktree_patch`:
 1. Require a git repository and resolve its root.
 2. Create a uniquely named temporary detached worktree from current `HEAD` using the task and run
    IDs plus an OS-generated random suffix.
-3. Run the target agent only inside that worktree.
+3. Recheck every allowed write path against the detached `HEAD` for symlink traversal, then run the
+   target agent only inside that worktree.
 4. Collect tracked and untracked changed paths.
 5. Reject forbidden or out-of-scope paths.
 6. Build a binary-safe patch artifact and fingerprint it.
@@ -297,7 +312,7 @@ Threats and controls:
 
 | Threat | Control |
 | --- | --- |
-| Codex/Claude recursion loop | environment depth guard and cross-provider depth one |
+| Codex/Claude recursion loop | non-lowerable environment depth, exclusive dispatch lock, child process-group cleanup |
 | cost runaway | timeout, Claude USD cap, one attempt, finite agent turns |
 | prompt injection from repository/source | role prompt, tool restrictions, no credential access |
 | unreviewed writes | detached worktree and unapplied patch |
@@ -319,6 +334,7 @@ Add `config/agent-orchestration.v1.yaml` and an identical packaged copy. It defi
 - providers and binary names;
 - role/mode matrix;
 - maximum timeout, output bytes, Claude budget, and cross-provider depth;
+- one active external provider call per local user;
 - allowed and forbidden CLI flags;
 - protected repository paths;
 - role prompts and output schema version;
@@ -384,7 +400,8 @@ Documentation must distinguish:
 - read-only task producing a write is blocked;
 - temporary worktree is removed after success, failure, and timeout;
 - untracked files appear in the patch artifact.
-- concurrent task IDs receive non-overlapping worktree paths.
+- a concurrent or nested external dispatch fails before provider execution;
+- native subagents remain available for bounded parallel read-only work.
 
 ### Plugin
 
@@ -399,7 +416,7 @@ Documentation must distinguish:
 - `agents doctor` is offline and deterministic apart from installed versions;
 - `agents inspect` never executes a provider;
 - fixture Codex-to-Claude and Claude-to-Codex dispatches create valid receipts;
-- delegated process cannot delegate again;
+- the broker rejects nested or concurrent external dispatch while another dispatch is active;
 - agent result cannot mutate a gate or live boundary.
 
 ### Existing matrix
@@ -474,16 +491,19 @@ not a repository default, because aliases and availability change independently 
 
 The implementation completed on 2026-07-10 with:
 
-- 162 pre-smoke repository tests passing before the final compatibility fixes and 164 tests in the
-  final complete matrix recorded in `reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md`;
+- 168 repository tests passing in the final complete matrix recorded in
+  `reports/CROSS_AGENT_ORCHESTRATION_AUDIT_0.9.0.md`;
 - all seven Codex skill validators, the Codex plugin validator, and both strict Claude plugin
   validators passing;
 - clean wheel installation validating the packaged policy, both result schemas, and
   `the-pass agents inspect` without a source checkout;
-- fixture Codex-to-Claude and Claude-to-Codex dispatches, concurrency, malformed output, timeout,
-  output/patch caps, policy hash, path traversal, symlink, and worktree cleanup coverage;
+- fixture Codex-to-Claude and Claude-to-Codex dispatches, serialization, malformed output, timeout,
+  output/patch caps, policy hash, protected output, patch tampering, path traversal, symlink drift,
+  provider-config isolation, child cleanup, and worktree cleanup coverage;
 - authenticated read-only smoke dispatches completing in both real provider directions with
-  create-only receipts and no workspace writes.
+  create-only receipts and no workspace writes;
+- an authenticated broker-managed Claude coordinator smoke completing through its scoped reviewer
+  subagent while the coordinator had no direct file or shell tools.
 
 The authenticated smoke exposed provider-specific output differences that fixture-only testing
 could not reveal. Those findings were fixed before completion: Claude may return one fenced JSON

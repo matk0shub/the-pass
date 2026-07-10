@@ -258,5 +258,8 @@ safety:
   credentials_allowed: false
   paper_process_isolated: true
   cross_provider_depth: 1
+  max_concurrent_external_dispatches: 1
+  provider_user_config_allowed: false
+  provider_mcp_allowed: false
   external_agent_retryable: false
   external_agent_auto_apply: false

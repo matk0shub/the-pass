@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -38,6 +39,16 @@ def main() -> int:
     objective = task["objective"].lower()
     if "sleep-provider" in objective:
         time.sleep(5)
+    if "hold-provider" in objective:
+        time.sleep(0.5)
+    if "orphan-child" in objective:
+        subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "import pathlib,time; time.sleep(0.5); pathlib.Path('orphan-marker').write_text('bad')",
+            ]
+        )
     if "excess-output" in objective:
         print("x" * (int(task["max_output_bytes"]) + 4096))
         return 0
@@ -112,7 +123,7 @@ def main() -> int:
                         "subtype": "success",
                         "session_id": "fixture-claude-session",
                         "total_cost_usd": 0.01,
-                        "result": f"```json\n{json.dumps(result)}\n```\nValidated result.",
+                        "result": f"```json\n{json.dumps(result)}\n```\nValidated {{result}}.",
                     }
                 )
             )

@@ -14,6 +14,14 @@ and the Keep a Changelog structure.
 - Depth-one, no-retry cross-provider orchestration with read-only delegation, isolated worktree
   patches, protected authority paths, create-only receipts, and no automatic patch application.
 
+### Changed
+
+- Hardened delegated provider processes by excluding user/project MCP, connector, plugin, hook,
+  rule, and native multi-agent configuration.
+- Serialized external dispatches, terminated residual provider process groups, rechecked detached
+  worktree symlinks, protected broker output paths, and made patch fingerprints semantically
+  verifiable.
+
 ## [0.8.0] - 2026-07-10
 
 ### Added

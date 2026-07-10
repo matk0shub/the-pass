@@ -39,6 +39,27 @@ trading gate, live execution, venue credentials, or automated patch acceptance.
 
 No open P0 or P1 finding remains.
 
+## Second-Pass Adversarial Audit
+
+A second full diff and runtime audit was performed after the initial green PR. It reviewed provider
+configuration loading, recursion resistance, process descendants, dirty-tree versus committed-tree
+path resolution, broker output placement, receipt semantics, patch bytes, and native-agent name
+resolution. The following additional findings were confirmed and fixed:
+
+| Severity | Finding | Resolution |
+| --- | --- | --- |
+| P1 | Codex and Claude inherited user/project MCP, connector, plugin, hook, and rule configuration. | Codex now ignores user config/rules, clears MCP/hooks/plugins, and disables unrelated capabilities; Claude loads no setting sources and uses an empty strict MCP config. |
+| P1 | Environment depth could be unset by a delegated shell before starting another broker process. | External dispatch is serialized with a per-user OS lock, supplied depth cannot lower inherited depth, and residual POSIX process groups are terminated before unlock. |
+| P1 | `--output-dir` could place broker artifacts under protected governance paths. | Output paths are resolved and rejected before execution when they are inside a protected workspace path. |
+| P1 | Allowed paths were checked in the dirty caller tree but not against detached `HEAD`. | Every allowed path is rechecked for symlink traversal after worktree creation. |
+| P1 | `agent_run` validated the recorded patch hash format but not the current patch bytes. | Semantic validation now requires an existing regular patch file and verifies its SHA-256. |
+| P1 | The protected-path inventory omitted CI, CLI, validators, agent definitions, packaged agent schemas, and build metadata. | Policy coverage now includes all of those authorities and remains source/package identical. |
+| P2 | Bare agent names could resolve ambiguously when another Claude plugin defines the same roles. | Coordinator and broker allowlists now use scoped `the-pass:*` agent names. |
+| P2 | Claude fenced JSON could be rejected when harmless prose outside the sole JSON fence contained braces. | The parser requires exactly one labelled `json` fence and ignores all surrounding prose as non-authoritative before strict validation. |
+
+No second-pass P0 finding was found. All second-pass P1 findings are closed by code and regression
+tests before the final verdict.
+
 ## Verification
 
 The final audit matrix requires all of the following to pass:
@@ -55,7 +76,7 @@ uv run python scripts/validate_distribution.py <wheel>
 ```
 
 All seven `skills/*/SKILL.md` files also pass the official Codex skill validator, and the repository
-passes the official Codex plugin validator. The final offline suite contains 164 passing tests.
+passes the official Codex plugin validator. The final offline suite contains 168 passing tests.
 
 Authenticated read-only smoke results:
 
@@ -63,10 +84,23 @@ Authenticated read-only smoke results:
 | --- | --- | --- | --- |
 | Codex caller to Claude target | complete | none | Valid strict result; reported Claude cost was USD 0.1181065. |
 | Claude caller to Codex target | complete | none | Valid strict result; Codex CLI does not report a cost field. |
+| Codex caller to Claude reviewer subagent | complete | none | Scoped coordinator had no direct file/shell tools; reviewer returned `# The Pass`; reported Claude cost was USD 0.009881. |
 
 Smoke receipts were intentionally written under a temporary directory and are not committed as
 portable project evidence. The stable evidence is the fixture-backed regression suite and this
 sanitized audit record.
+
+## Code Evidence
+
+| Control | Evidence |
+| --- | --- |
+| Policy invariants, runtime depth, and exclusive dispatch lock | `src/the_pass/agent_orchestration.py:100`, `src/the_pass/agent_orchestration.py:178`, `src/the_pass/agent_orchestration.py:194` |
+| Provider config isolation and scoped native-agent allowlist | `src/the_pass/agent_orchestration.py:417`, `src/the_pass/agent_orchestration.py:464`, `src/the_pass/agent_orchestration.py:486` |
+| Bounded process groups and strict provider-result parsing | `src/the_pass/agent_orchestration.py:599`, `src/the_pass/agent_orchestration.py:613`, `src/the_pass/agent_orchestration.py:786` |
+| Protected output path and serialized dispatch | `src/the_pass/agent_orchestration.py:1142` |
+| Receipt chronology, identity, and current patch-byte verification | `src/the_pass/validator.py:664` |
+| Plugin topology and policy-copy checks | `scripts/validate_public_repo.py:207`, `scripts/validate_public_repo.py:426` |
+| Agent-only coordinator contract | `agents/coordinator.md:1` |
 
 ## Residual Boundaries
 

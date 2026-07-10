@@ -6,14 +6,15 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
 
 from the_pass.agent_orchestration import (
     AgentSafetyError,
+    _exclusive_dispatch_lock,
     _write_create_only,
     build_provider_argv,
     critical_paths_are_protected,
@@ -137,6 +138,17 @@ class AgentOrchestrationTests(unittest.TestCase):
                     self.assertNotIn("dangerously", joined)
                     self.assertNotIn("--add-dir", argv)
                     self.assertIn("read-only" if target == "codex" else "plan", argv)
+                    if target == "codex":
+                        self.assertIn("--ignore-user-config", argv)
+                        self.assertIn("--ignore-rules", argv)
+                        self.assertIn("mcp_servers={}", argv)
+                        self.assertIn("project_doc_max_bytes=0", argv)
+                        self.assertIn("plugins", argv)
+                    else:
+                        self.assertIn("--strict-mcp-config", argv)
+                        self.assertIn('{"mcpServers":{}}', argv)
+                        self.assertIn("--setting-sources", argv)
+                        self.assertIn("--disable-slash-commands", argv)
 
     def test_cross_provider_native_subagents_are_read_only_specialists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -151,8 +163,15 @@ class AgentOrchestrationTests(unittest.TestCase):
                 result_path=root / "result.json",
                 provider_commands=self.fixture_commands(),
             )
-            self.assertIn("Read,Glob,Grep,Agent(researcher),Agent(reviewer)", argv)
-            self.assertIn("Write,Edit,Bash,Agent(implementer),Agent(coordinator)", argv)
+            self.assertIn(
+                "Agent(the-pass:researcher),Agent(the-pass:reviewer)", argv
+            )
+            self.assertIn(
+                "Write,Edit,Bash,Agent(the-pass:implementer),Agent(the-pass:coordinator)",
+                argv,
+            )
+            permission_index = argv.index("--permission-mode")
+            self.assertEqual(argv[permission_index + 1], "acceptEdits")
             self.assertNotIn("Read,Glob,Grep,Agent", argv)
 
     def test_inspect_is_non_executing_and_depth_is_runtime_derived(self) -> None:
@@ -215,6 +234,16 @@ class AgentOrchestrationTests(unittest.TestCase):
             budget["max_budget_usd"] = 5.01
             with self.assertRaisesRegex(AgentSafetyError, "budget exceeds"):
                 validate_agent_task_file(self.write_task(root, budget))
+
+            protected_case = self.task_document(
+                caller="claude",
+                target="codex",
+                role="implementer",
+                mode="worktree_patch",
+                allowed=["CONFIG"],
+            )
+            with self.assertRaisesRegex(AgentSafetyError, "intersects protected path"):
+                validate_agent_task_file(self.write_task(root, protected_case))
 
     def test_fixture_dispatch_succeeds_in_both_directions(self) -> None:
         for caller, target in (("codex", "claude"), ("claude", "codex")):
@@ -478,46 +507,91 @@ class AgentOrchestrationTests(unittest.TestCase):
             ).stdout
             self.assertEqual(worktrees.count("worktree "), 1)
 
-    def test_concurrent_worktree_runs_are_isolated(self) -> None:
+    def test_external_dispatch_lock_blocks_nested_or_concurrent_execution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self.git_repo(root)
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            task_path = self.write_task(root, self.task_document())
+            with _exclusive_dispatch_lock():
+                with self.assertRaisesRegex(AgentSafetyError, "dispatch is active"):
+                    dispatch_agent_task(
+                        task_path,
+                        output_dir=root / "runs",
+                        execute=True,
+                        provider_commands=self.fixture_commands(),
+                    )
+            run, _, exit_code = dispatch_agent_task(
+                task_path,
+                output_dir=root / "runs",
+                execute=True,
+                provider_commands=self.fixture_commands(),
+            )
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(run["status"], "complete")
 
-            def run_task(index: int) -> tuple[dict, Path, int]:
-                document = self.task_document(
-                    caller="claude",
-                    target="codex",
-                    role="implementer",
-                    mode="worktree_patch",
-                    objective=f"Create bounded fixture file {index}.",
-                    allowed=[f"generated-{index}"],
-                )
-                document["task_id"] = f"fixture-agent-task-{index}"
-                task_path = root / f"agent-task-{index}.yaml"
-                task_path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
-                return dispatch_agent_task(
+    @unittest.skipIf(os.name == "nt", "POSIX process-group cleanup")
+    def test_successful_provider_cannot_leave_background_children(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            task_path = self.write_task(
+                root,
+                self.task_document(objective="Return evidence and launch orphan-child."),
+            )
+            run, _, exit_code = dispatch_agent_task(
+                task_path,
+                output_dir=root / "runs",
+                execute=True,
+                provider_commands=self.fixture_commands(),
+            )
+            self.assertEqual(exit_code, 0)
+            time.sleep(0.7)
+            self.assertFalse((root / "orphan-marker").exists())
+
+    def test_protected_output_directory_is_forbidden_before_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            (root / "config").mkdir()
+            task_path = self.write_task(root, self.task_document())
+            with self.assertRaisesRegex(AgentSafetyError, "output directory"):
+                dispatch_agent_task(
                     task_path,
-                    output_dir=root / "runs",
+                    output_dir=root / "config" / "agents",
                     execute=True,
                     provider_commands=self.fixture_commands(),
                 )
 
-            with ThreadPoolExecutor(max_workers=2) as pool:
-                completed = list(pool.map(run_task, (1, 2)))
-
-            self.assertEqual([item[2] for item in completed], [0, 0])
-            patch_paths = [item[0]["patch"]["path"] for item in completed]
-            self.assertEqual(len(set(patch_paths)), 2)
-            self.assertFalse((root / "generated-1").exists())
-            self.assertFalse((root / "generated-2").exists())
-            worktrees = subprocess.run(
-                ["git", "worktree", "list", "--porcelain"],
-                cwd=root,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout
-            self.assertEqual(worktrees.count("worktree "), 1)
+    def test_detached_worktree_rechecks_committed_symlink_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.git_repo(root)
+            outside = root.parent / f"{root.name}-outside"
+            outside.mkdir()
+            (root / "generated").symlink_to(outside, target_is_directory=True)
+            subprocess.run(["git", "add", "generated"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "symlink"], cwd=root, check=True)
+            (root / "generated").unlink()
+            (root / "generated").mkdir()
+            task_path = self.write_task(
+                root,
+                self.task_document(
+                    caller="claude",
+                    target="codex",
+                    role="implementer",
+                    mode="worktree_patch",
+                    allowed=["generated"],
+                ),
+            )
+            run, _, exit_code = dispatch_agent_task(
+                task_path,
+                output_dir=root / "runs",
+                execute=True,
+                provider_commands=self.fixture_commands(),
+            )
+            self.assertEqual(exit_code, 3)
+            self.assertIn("detached worktree", run["issues"][0])
+            outside.rmdir()
 
     def test_create_only_receipts_cannot_be_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -547,6 +621,38 @@ class AgentOrchestrationTests(unittest.TestCase):
                 any(issue.path == "$.result_fingerprint" for issue in validation.issues)
             )
 
+    def test_agent_run_validation_detects_patch_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.git_repo(root)
+            task_path = self.write_task(
+                root,
+                self.task_document(
+                    caller="claude",
+                    target="codex",
+                    role="implementer",
+                    mode="worktree_patch",
+                    allowed=["generated"],
+                ),
+            )
+            run, run_path, exit_code = dispatch_agent_task(
+                task_path,
+                output_dir=root / "runs",
+                execute=True,
+                provider_commands=self.fixture_commands(),
+            )
+            self.assertEqual(exit_code, 0)
+            Path(run["patch"]["path"]).write_text("tampered\n", encoding="utf-8")
+            validation = validate_artifact(run_path, artifact_type="agent_run")
+            self.assertFalse(validation.ok)
+            self.assertTrue(any(issue.path == "$.patch.sha256" for issue in validation.issues))
+
+            run["patch"]["path"] = str(root / "README.md")
+            run_path.write_text(json.dumps(run), encoding="utf-8")
+            validation = validate_artifact(run_path, artifact_type="agent_run")
+            self.assertFalse(validation.ok)
+            self.assertTrue(any(issue.path == "$.patch.path" for issue in validation.issues))
+
     def test_child_environment_depth_does_not_trust_task_or_parent_mapping(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -560,6 +666,14 @@ class AgentOrchestrationTests(unittest.TestCase):
                         task_path,
                         output_dir=root / "runs",
                         execute=True,
+                        provider_commands=self.fixture_commands(),
+                    )
+                with self.assertRaisesRegex(AgentSafetyError, "depth"):
+                    dispatch_agent_task(
+                        task_path,
+                        output_dir=root / "runs",
+                        execute=True,
+                        environment={"THE_PASS_AGENT_DEPTH": "0"},
                         provider_commands=self.fixture_commands(),
                     )
             finally:

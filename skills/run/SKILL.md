@@ -52,6 +52,8 @@ window, a missing independent reviewer, a kill condition, or another hard blocke
   --execute` only when the other provider adds a distinct capability or independent perspective.
 - Delegation depth is one. A delegated task cannot invoke another agent, decide a gate, modify the
   workflow ledger, or count as the independent human reviewer.
+- Only one external provider dispatch may be active per local user. Use bounded native subagents
+  for parallel research/review; do not queue or retry a second external call.
 - Implementation delegates return an unapplied worktree patch. Review the patch, apply it in the
   caller workspace, and run all required checks before recording progress.
 
