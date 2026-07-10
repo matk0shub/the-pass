@@ -31,9 +31,9 @@ Python contexts and every technical release gate remain mandatory.
 
 - Package, Codex plugin, Claude plugin, both marketplaces, skill policy, and agent policy agree on
   `0.9.1`.
-- A clean isolated Codex profile discovers `the-pass@the-pass-tools`, installs it, enables it, and
-  exposes exactly seven skills.
-- Claude marketplace validation accepts the pinned HTTPS source without relying on SSH.
+- Clean isolated Codex and Claude profiles both install and enable `the-pass@the-pass-tools`
+  through the remote Git branch without user settings, SSH keys, or cache reuse. Each installed
+  archive contains exactly seven skills and four bounded Claude agent definitions.
 - The documented CLI smoke validates a synthetic package, appends and verifies a ledger, creates
   workflow state, builds a seeded-random package, and validates that package.
 - All 37 latest-version templates pass production artifact validation.
