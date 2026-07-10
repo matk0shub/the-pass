@@ -15,7 +15,9 @@
 1. Merge only after required protected-branch checks pass and review findings are resolved.
 2. Build wheel and sdist in CI, not from an unreviewed workstation state.
 3. Verify packaged schemas, policies, CLI behavior, and absence of live-order paths.
-4. Do not use administrator bypass to replace the required independent review.
+4. Do not use administrator bypass to replace the required independent review unless the
+   repository owner explicitly authorizes an exception for that release. Record the exception,
+   missing review, green required checks, and resulting merge commit in the release audit.
 
 ## Tag and Publish
 

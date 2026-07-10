@@ -2,8 +2,8 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: `v0.8.0` release candidate passes the local audit; publication still requires protected
-branch review, merge, tag validation, and release-workflow success.
+Status: `v0.8.0` passed local and GitHub CI and was merged to `main`. Tag validation and the
+release workflow remain before publication.
 
 ## Repository Safety
 
@@ -46,8 +46,9 @@ branch review, merge, tag validation, and release-workflow success.
 - [x] The wheel passes clean installation and CLI validation outside the checkout.
 - [x] Branch protection requires both Python CI contexts and pull-request review.
 - [x] Release publication is gated by `.github/workflows/release.yml`.
-- [ ] The `v0.8.0` candidate has received the required independent pull-request review.
-- [ ] The reviewed main commit has been tagged `v0.8.0` and the release workflow has published
+- [x] The repository owner explicitly authorized an administrative review exception for PR #6
+      after both required CI contexts passed; no independent GitHub approval was recorded.
+- [ ] The audited main commit has been tagged `v0.8.0` and the release workflow has published
       matching assets and checksums.
 
 Release evidence:

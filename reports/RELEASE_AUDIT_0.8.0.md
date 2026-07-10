@@ -2,11 +2,13 @@
 
 Audit date: 2026-07-10
 
-Candidate verdict: **PASS FOR PROTECTED REVIEW AND RELEASE**
+Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
-Publication state: pending the required independent pull-request review, protected merge,
-annotated `v0.8.0` tag, and release-workflow completion. This audit does not authorize an
-administrator bypass.
+Publication state: PR #6 was administratively squash-merged as commit `0944d60` after both
+required CI contexts passed. The sole repository collaborator explicitly instructed the agent to
+perform the merge after being told that it would bypass the required independent approval. No
+independent GitHub review was recorded. Publication still requires the annotated `v0.8.0` tag and
+successful release workflow.
 
 ## Scope
 
@@ -39,15 +41,17 @@ The detailed trust-boundary finding ledger is in
 - Plugin manifest: `.codex-plugin/plugin.json`
 - Package metadata: `pyproject.toml`
 
-## Required Publication Gates
+## Publication Gates
 
-1. Protected pull-request CI passes on Python 3.9 and 3.12.
-2. An independent reviewer approves the pull request and all findings are resolved.
-3. The reviewed commit is merged to `main` without bypassing branch protection.
-4. An annotated `v0.8.0` tag triggers `.github/workflows/release.yml`.
-5. Release assets and `SHA256SUMS` are generated and validated by that workflow.
+- [x] Protected pull-request CI passed on Python 3.9 and 3.12.
+- [x] The owner explicitly authorized an administrative exception because no second collaborator
+  was available; this substitutes for the GitHub approval requirement for this release only.
+- [x] PR #6 was squash-merged to `main` as `0944d60`.
+- [ ] An annotated `v0.8.0` tag triggers `.github/workflows/release.yml`.
+- [ ] Release assets and `SHA256SUMS` are generated and validated by that workflow.
 
-Until all five gates complete, `0.8.0` is a validated release candidate, not a published release.
+Until the final two gates complete, `0.8.0` is a validated release candidate, not a published
+release.
 
 ## Safety Result
 
