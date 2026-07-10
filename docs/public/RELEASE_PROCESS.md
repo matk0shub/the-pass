@@ -6,13 +6,16 @@
 2. Update `CHANGELOG.md`, package version, completion audit, and remaining-work status.
 3. Run Python 3.9 and 3.12 tests, public validation, Ruff, lock check, and distribution checks.
 4. Confirm no candidate result is represented as a framework capability result.
-5. Open a pull request and record the safety impact and exact verification commands.
+5. Create `docs/public/RELEASE_NOTES_vX.Y.Z.md` and `reports/RELEASE_AUDIT_X.Y.Z.md`; the release
+   workflow resolves both paths from the tag and fails if either is absent.
+6. Open a pull request and record the safety impact and exact verification commands.
 
 ## Build and Merge
 
 1. Merge only after required protected-branch checks pass and review findings are resolved.
 2. Build wheel and sdist in CI, not from an unreviewed workstation state.
 3. Verify packaged schemas, policies, CLI behavior, and absence of live-order paths.
+4. Do not use administrator bypass to replace the required independent review.
 
 ## Tag and Publish
 

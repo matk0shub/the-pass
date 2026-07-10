@@ -5,6 +5,33 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-10
+
+### Added
+
+- `/the-pass:run`, a bounded and resumable whole-line orchestrator from research through the
+  selected `research_gate`, `paper_gate`, or `risk_review` target.
+- A machine-readable seven-skill pipeline policy and additive `the-pass workflow` state CLI.
+- Immutable successor-package support and regression coverage for transition budgets,
+  no-progress stops, target gates, reviewer independence, and the locked live boundary.
+
+### Changed
+
+- Consolidated eleven overlapping slash skills into seven public commands: `run`, `research`,
+  `test`, `review`, `paper`, `plate`, and `status`.
+- Promotion gates now require the reviewer to differ from both the StrategySpec owner and run
+  owner.
+- Failed target gates can now stop, resume, or enter bounded remediation without bypassing
+  completion checks, passed targets complete at the transition-budget boundary, and successor
+  packages require ledger-backed source provenance.
+- Remediation accounting is derived from workflow transitions, defaults to no gate progress, and
+  requires concrete finding evidence on entry. Target-gate remediation additionally requires a
+  recorded exact-package non-pass decision, while progress requires a recorded successor.
+- Successor lineage is enforced by every ledger append and semantic replay, including predecessor
+  package, strategy, run ID, and artifact fingerprint checks.
+- Only exact-path v2 runs and decisions are authoritative; semantic replay enforces run-before-gate
+  ordering, and exhausted workflow budgets cannot be resumed.
+
 ## [0.7.1] - 2026-07-10
 
 ### Fixed
@@ -42,6 +69,7 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/matk0shub/the-pass/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/matk0shub/the-pass/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/matk0shub/the-pass/compare/f9fb5e0...v0.7.0

@@ -1,8 +1,15 @@
 # The Pass Remaining Work Plan
 
-Status: implementation complete; `v0.7.1` fix-forward publication authorized
+Status: completed historical `v0.7.1` hardening plan; superseded for current work
 Updated: 2026-07-10
-Target release: `v0.7.1`
+Historical target release: `v0.7.1`
+
+> [!NOTE]
+> RW0 through RW6 below describe the completed `v0.7.x` hardening cycle. Current `0.8.0`
+> interface work and its final evidence are tracked in
+> [SLASH_SKILL_CONSOLIDATION_PLAN.md](SLASH_SKILL_CONSOLIDATION_PLAN.md) and
+> [the release audit](../../reports/RELEASE_AUDIT_0.8.0.md). This file remains unchanged in
+> substance as historical release evidence; it is not an open task list.
 
 ## 1. Purpose and Boundary
 

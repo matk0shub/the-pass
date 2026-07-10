@@ -14,7 +14,7 @@ the-pass --version
 From a downloaded wheel:
 
 ```bash
-python -m pip install "the_pass-0.7.1-py3-none-any.whl[data,research,paper]"
+python -m pip install "the_pass-0.8.0-py3-none-any.whl[data,research,paper]"
 the-pass --version
 ```
 
@@ -30,6 +30,10 @@ the-pass validate-package path/to/package --format json
 the-pass receipts add path/to/package --ledger receipts.jsonl
 the-pass receipts verify --ledger receipts.jsonl
 ```
+
+For a guided end-to-end research line, install the bundled Codex plugin and use
+`/the-pass:run`. The Python `workflow` group exposes the same validated state primitives for
+automation; it does not bypass independent gate evaluation.
 
 Packaged schemas and policies are loaded from the installed wheel. A source checkout is not
 required. No command needs or loads venue credentials.

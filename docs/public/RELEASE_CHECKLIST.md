@@ -2,7 +2,8 @@
 
 Use this before pushing or publishing The Pass.
 
-Status: release audit passed for `v0.7.1` on 2026-07-10.
+Status: `v0.8.0` release candidate passes the local audit; publication still requires protected
+branch review, merge, tag validation, and release-workflow success.
 
 ## Repository Safety
 
@@ -45,12 +46,15 @@ Status: release audit passed for `v0.7.1` on 2026-07-10.
 - [x] The wheel passes clean installation and CLI validation outside the checkout.
 - [x] Branch protection requires both Python CI contexts and pull-request review.
 - [x] Release publication is gated by `.github/workflows/release.yml`.
+- [ ] The `v0.8.0` candidate has received the required independent pull-request review.
+- [ ] The reviewed main commit has been tagged `v0.8.0` and the release workflow has published
+      matching assets and checksums.
 
 Release evidence:
 
-- `https://github.com/matk0shub/the-pass/pull/1`
-- `https://github.com/matk0shub/the-pass/actions/runs/29074681353`
-- `reports/RELEASE_AUDIT_0.7.1.md`
+- `https://github.com/matk0shub/the-pass/pull/6`
+- `reports/RELEASE_AUDIT_0.8.0.md`
+- `reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md`
 - `reports/benchmarks/baseline-v0.7.0.json`
 - `reports/network/public-adapter-smoke-v0.7.0.json`
 - `reports/network/research-links-v0.7.0.json`

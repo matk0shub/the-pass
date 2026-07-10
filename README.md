@@ -62,6 +62,10 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
+The source tree and Codex plugin are versioned `0.8.0`. The release badge above remains the
+authority for the latest published tag; source-version readiness is recorded in the
+[`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md).
+
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
 | Research and schemas | Complete | Synthetic/public-safe evidence only |
@@ -73,7 +77,8 @@ while candidate promotion remains deliberately separate.
 
 See the [machine-readable roadmap](docs/implementation/roadmap-status.yaml),
 [completion audit](docs/implementation/COMPLETION_AUDIT.md), and
-[v0.7.1 release audit](reports/RELEASE_AUDIT_0.7.1.md) for exact evidence paths.
+[slash-skill consolidation audit](reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md) for exact
+evidence paths.
 
 ## Quick Start
 
@@ -141,7 +146,8 @@ uv run the-pass <group> --help
 | `paper` | Run an isolated virtual paper worker |
 | `automation`, `incident` | Execute whitelisted jobs and create fail-closed incident evidence |
 | `report`, `dashboard` | Build static, read-only evidence bundles |
-| `receipts` | Append and verify hash-chained run and gate-decision ledgers |
+| `receipts` | Append and semantically replay run and gate-decision ledgers |
+| `workflow` | Start, advance, inspect, or supersede a bounded slash-skill run |
 
 All commands support `--format text|json`. Stable JSON responses contain `ok`, `status`,
 `artifact_paths`, `issues`, and `receipt_id`. See the full [CLI contract](docs/public/CLI_CONTRACT.md).
@@ -160,26 +166,42 @@ and returns `3` in the public implementation.
 
 ## Codex Plugin
 
-The repository also contains a Codex plugin manifest and focused slash-command skills. The
-plugin is the guided research surface; the Python CLI remains the machine interface and source
-of validation truth.
+The repository also contains a Codex plugin manifest and seven focused slash-command skills.
+The plugin is the guided research surface; the Python CLI remains the machine interface and
+source of validation truth.
 
 | Slash command | Purpose |
 | --- | --- |
-| `/the-pass:mise` | Audit or prepare a repository |
-| `/the-pass:research` | Turn sources into reviewed notes and hypotheses |
-| `/the-pass:spec` | Formalize an idea as a `StrategySpec` |
-| `/the-pass:screen` | Design or run a diagnostic screen |
-| `/the-pass:backtest` | Build a reproducible run package |
-| `/the-pass:taste` | Independently review data, statistics, execution, and risk |
-| `/the-pass:refire` | Fix confirmed findings without silently changing the question |
-| `/the-pass:simmer` | Iterate toward one gate or kill condition |
-| `/the-pass:paper` | Prepare replay or paper observation |
-| `/the-pass:plate` | Package evidence for the next human-controlled gate |
-| `/the-pass:receipts` | Summarize immutable runs, decisions, and blockers |
+| `/the-pass:run` | Orchestrate the whole bounded line to one selected gate |
+| `/the-pass:research` | Review sources, formalize a hypothesis, and create a StrategySpec |
+| `/the-pass:test` | Run a diagnostic screen or reproducible backtest package |
+| `/the-pass:review` | Independently review research, paper, or risk evidence |
+| `/the-pass:paper` | Prepare and observe isolated replay/paper evidence |
+| `/the-pass:plate` | Build the risk and approval package after paper passage |
+| `/the-pass:status` | Summarize workflow state, receipts, blockers, and next action |
+
+`/the-pass:run` is the default front door. It creates resumable state under
+`.the-pass/runs/<run-id>/state.yaml`, invokes the focused skills in policy order, records
+immutable evidence, and stops at `complete`, `waiting`, `blocked`, or `killed`. For example:
+
+```text
+/the-pass:run Test this momentum idea to research_gate
+```
+
+The orchestrator never treats a receipt as approval, never retries a gate decision, and cannot
+target `live_gate`. Paper observation may correctly stop at `waiting` until its predeclared
+window is complete.
+
+The state machine is bounded: at most twenty work transitions, three remediation laps per gate,
+and two consecutive no-progress remediation laps. Exhausted budgets cannot be resumed. A target
+gate can enter remediation only from its exact package's recorded `blocked` or `revise` decision
+when that decision fingerprints a confirmed finding. Claimed progress requires a newly recorded
+successor package; editing counters, copying a package, or using a v1 row cannot advance the run.
 
 The complete behavioral contract is in [The Pass Commands](docs/plugin/COMMANDS.md) and
-[Skill Contracts](docs/implementation/SKILL_CONTRACTS.md).
+[Skill Contracts](docs/implementation/SKILL_CONTRACTS.md). The consolidation rationale and
+verified implementation plan are in the
+[Slash Skill Consolidation Plan](docs/implementation/SLASH_SKILL_CONSOLIDATION_PLAN.md).
 
 ## Evidence Model
 
@@ -195,6 +217,11 @@ Core v2 artifacts include:
 Schemas are registered by `(artifact_type, schema_version)`. V1 evidence remains readable for
 compatibility, but cannot be treated as a passed v2 gate. Strategy specifications are immutable
 after their first run; material changes create a new version and run.
+
+Authoritative v2 lookups bind both the deterministic package ID and the resolved package path.
+A run must be recorded before its gate decision, package IDs cannot be reused across paths, and
+paper/risk progression uses `the-pass workflow supersede --ledger <ledger>` to prove exact
+predecessor lineage. Every successor receives fresh prerequisite gate decisions.
 
 Canonical candidate gates are:
 
@@ -309,7 +336,10 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
+- [Plugin command contract](docs/plugin/COMMANDS.md)
+- [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
+- [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)
 - [Performance policy](docs/public/PERFORMANCE_POLICY.md)
 - [Outcome examples](examples/outcomes/README.md)
 - [Changelog](CHANGELOG.md)
