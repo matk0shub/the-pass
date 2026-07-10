@@ -4,8 +4,9 @@ Audit date: 2026-07-10
 
 Candidate verdict: **PASS FOR RELEASE UNDER EXPLICIT OWNER EXCEPTION**
 
-Publication state: release preparation is in progress. The release PR, merge commit, tag workflow,
-and downloaded assets will be recorded before completion.
+Publication state: release preparation is tracked in
+[PR #11](https://github.com/matk0shub/the-pass/pull/11). Its required CI result, merge commit, tag
+workflow, and downloaded assets will be recorded before completion.
 
 ## Why A Patch Release Is Required
 
