@@ -41,6 +41,7 @@ Trading roadmap gate evidence is tracked separately:
 - [Remaining release and maintenance work](REMAINING_WORK_PLAN.md)
 - [Slash-skill consolidation plan](SLASH_SKILL_CONSOLIDATION_PLAN.md)
 - [Slash-skill consolidation implementation audit](../../reports/SLASH_SKILL_CONSOLIDATION_AUDIT_2026-07-10.md)
+- [`v0.8.0` release audit](../../reports/RELEASE_AUDIT_0.8.0.md)
 - [Seven-skill machine policy](../../config/skill-pipeline.v1.yaml)
 - [Consolidated interface ADR](../adr/ADR-0009-consolidated-skill-interface.md)
 
@@ -64,8 +65,8 @@ the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 Codex plugin developers should also run the bundled `plugin-creator/scripts/validate_plugin.py`
 validator against the repo root from their local Codex install.
 
-The current cross-version test count and commands are recorded once in the
-[v0.7.0 release audit](../../reports/RELEASE_AUDIT_0.7.0.md).
+The current cross-version test count and complete verification matrix are recorded once in the
+[`v0.8.0` release audit](../../reports/RELEASE_AUDIT_0.8.0.md).
 
 ## Safety Result
 

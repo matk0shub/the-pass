@@ -56,3 +56,26 @@ declined promotion.
 - Text output is for humans and is not a stable parsing interface.
 - Candidate gate IDs remain `research_gate`, `paper_gate`, `risk_review`, and `live_gate`.
 - Framework milestone passes never imply that a candidate gate passed.
+
+## Workflow Authority
+
+The additive workflow commands are:
+
+```text
+the-pass workflow start
+the-pass workflow advance
+the-pass workflow status
+the-pass workflow fingerprint
+the-pass workflow supersede
+```
+
+`start`, `advance`, and `status` manage validated local state. `fingerprint` computes package
+identity without recording it. `supersede` requires `--ledger`, `--run-id`, and `--created-at`;
+it proves that the exact source path is a valid recorded v2 run before creating a mutable
+successor.
+
+Workflow state is not promotion authority. Promotion and remediation use semantically replayed
+v2 ledger evidence bound to the exact package ID and resolved path. A v1 row, prose label,
+verdict string, copied directory, out-of-order gate row, or duplicate package ID cannot replace a
+valid gate decision. Exhausted transition/remediation/no-progress budgets are terminal for that
+workflow ID.

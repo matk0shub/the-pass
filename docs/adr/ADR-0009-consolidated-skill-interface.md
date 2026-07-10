@@ -35,7 +35,8 @@ than silently routing old commands to changed semantics.
 The orchestration contract is machine-readable in `config/skill-pipeline.v1.yaml` and packaged
 with Python. `the_pass.orchestration` validates the stage graph, persists atomic run state,
 enforces target and iteration budgets, requires independent reviewers, and creates immutable
-successor packages. The additive CLI group is `the-pass workflow start|advance|status|supersede`.
+successor packages. The additive CLI group is
+`the-pass workflow start|advance|status|fingerprint|supersede`.
 
 `run` stops at its selected gate. It may return `waiting` for an incomplete paper window,
 `blocked` for missing or unsafe evidence, or `killed` for a falsified hypothesis. It never retries
@@ -59,13 +60,16 @@ a gate decision and cannot target `live_gate`.
 - Pipeline changes require policy, tests, skill contracts, and documentation to change together.
 - Workflow state is local generated evidence under `.the-pass/` and is not committed.
 - Gate evaluators remain the source of promotion truth; the orchestrator cannot self-approve.
+- Exact-path v2 ledger evidence is authoritative; legacy rows and copied packages remain
+  readable inputs but cannot authorize completion, remediation, or progression.
 
 ## Validation
 
 - Exactly seven `skills/*/SKILL.md` files exist and pass the skill validator.
 - Repository and packaged pipeline policies are identical and parse every declared CLI argv.
 - Unit tests cover target gates, illegal transitions, budgets, no-progress stops, reviewer
-  independence, immutable supersession, JSON envelopes, and the forbidden live target.
+  independence, exact-path ledger authority, immutable supersession, JSON envelopes, and the
+  forbidden live target.
 - Public README and command documentation contain no removed slash-command references.
 - Full offline repository validation, Ruff, unit tests, wheel validation, and safety scans pass.
 

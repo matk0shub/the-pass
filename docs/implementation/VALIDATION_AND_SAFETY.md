@@ -118,6 +118,12 @@ against the bundled policy. A gate can satisfy a prerequisite only after that se
 This fails closed for handwritten decisions, forged hash-consistent entries, stale policies, and
 silently edited evidence.
 
+Authoritative v2 replay also enforces the resolved package path, run-before-gate ordering,
+globally unique package IDs, and complete successor lineage. Target-gate remediation requires a
+recorded exact-package non-pass decision that fingerprints a confirmed finding. Transition,
+remediation, and no-progress budget exhaustion are terminal and cannot be reset through resume
+flags or caller-supplied counters.
+
 ## Public Safety Blocks
 
 Block public release if any of these are present:
@@ -163,3 +169,6 @@ the-pass receipts verify --ledger /tmp/the-pass-ledger.jsonl
 
 Codex plugin developers should also run the bundled plugin validator from their local Codex
 skill/tooling install against the repo root.
+
+The versioned release matrix, including all seven skill validators and installed-wheel checks,
+is recorded in `reports/RELEASE_AUDIT_0.8.0.md` rather than duplicated here.

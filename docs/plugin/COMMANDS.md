@@ -50,6 +50,9 @@ ledger-recorded `blocked` or `revise` decision whose exact package fingerprints 
 blocking finding. `--moved-gate true` is accepted only with a new recorded successor package.
 Budget exhaustion and two consecutive no-progress laps are non-resumable; continuation requires a
 new bounded workflow rather than editing counters or leaving the blocked remediation stage.
+`waiting` is resumable only when the declared external condition has changed. `killed`,
+`complete`, transition-budget exhaustion, remediation-budget exhaustion, and no-progress
+exhaustion are terminal for that workflow ID.
 
 State is stored at `.the-pass/runs/<run-id>/state.yaml`. Every transition is atomic and contains
 the current stage, target, owners, reviewer, exact package ID, evidence paths, blockers, budgets,
@@ -62,6 +65,10 @@ are separate append-only governance attachments and cannot be overwritten or ret
 - Every promotion claim comes from a valid v2 `gate_decision` for the exact package ID.
 - A reviewer must be named and differ from both the StrategySpec owner and run owner.
 - Every finalized run is added to the ledger, including `kill`, `revise`, and `blocked` results.
+- Authoritative evidence is a v2 run recorded for the exact resolved package path. V1 rows,
+  byte-identical copies, and duplicate package IDs at another path cannot authorize progression.
+- A gate decision must follow its run in ledger order and every successor must replay prerequisite
+  gates on its own package ID.
 - Gate decisions are never automatically retried.
 - The runner may invoke only CLI contracts declared in `config/skill-pipeline.v1.yaml`.
 - Missing capability or evidence produces `blocked`; an incomplete observation window produces

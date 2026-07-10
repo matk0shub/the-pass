@@ -62,6 +62,10 @@ policy hash.
 The framework is operational. All capability milestones in the machine-readable roadmap pass,
 while candidate promotion remains deliberately separate.
 
+The source tree and Codex plugin are versioned `0.8.0`. The release badge above remains the
+authority for the latest published tag; source-version readiness is recorded in the
+[`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md).
+
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
 | Research and schemas | Complete | Synthetic/public-safe evidence only |
@@ -188,6 +192,12 @@ The orchestrator never treats a receipt as approval, never retries a gate decisi
 target `live_gate`. Paper observation may correctly stop at `waiting` until its predeclared
 window is complete.
 
+The state machine is bounded: at most twenty work transitions, three remediation laps per gate,
+and two consecutive no-progress remediation laps. Exhausted budgets cannot be resumed. A target
+gate can enter remediation only from its exact package's recorded `blocked` or `revise` decision
+when that decision fingerprints a confirmed finding. Claimed progress requires a newly recorded
+successor package; editing counters, copying a package, or using a v1 row cannot advance the run.
+
 The complete behavioral contract is in [The Pass Commands](docs/plugin/COMMANDS.md) and
 [Skill Contracts](docs/implementation/SKILL_CONTRACTS.md). The consolidation rationale and
 verified implementation plan are in the
@@ -207,6 +217,11 @@ Core v2 artifacts include:
 Schemas are registered by `(artifact_type, schema_version)`. V1 evidence remains readable for
 compatibility, but cannot be treated as a passed v2 gate. Strategy specifications are immutable
 after their first run; material changes create a new version and run.
+
+Authoritative v2 lookups bind both the deterministic package ID and the resolved package path.
+A run must be recorded before its gate decision, package IDs cannot be reused across paths, and
+paper/risk progression uses `the-pass workflow supersede --ledger <ledger>` to prove exact
+predecessor lineage. Every successor receives fresh prerequisite gate decisions.
 
 Canonical candidate gates are:
 
@@ -321,7 +336,10 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
 - [Validation and safety](docs/implementation/VALIDATION_AND_SAFETY.md)
+- [Plugin command contract](docs/plugin/COMMANDS.md)
+- [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)
+- [`v0.8.0` release audit](reports/RELEASE_AUDIT_0.8.0.md)
 - [Performance policy](docs/public/PERFORMANCE_POLICY.md)
 - [Outcome examples](examples/outcomes/README.md)
 - [Changelog](CHANGELOG.md)

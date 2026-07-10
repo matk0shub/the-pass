@@ -75,6 +75,17 @@ V1 rows remain readable historical evidence but are never authoritative for pack
 lineage, promotion, remediation, or completion. Every authoritative lookup requires the exact
 recorded package path as well as its v2 package ID and artifact fingerprints.
 
+The canonical successor command is:
+
+```bash
+the-pass workflow supersede <recorded-package> <successor-package> \
+  --ledger <ledger> --run-id <new-run-id> --created-at <RFC3339>
+```
+
+The command verifies the shared ledger before copying. The successor must then be completed,
+validated, recorded as a new run, and independently evaluated. Copying bytes by hand does not
+create authoritative lineage.
+
 ## Immutability Rules
 
 - Raw data is immutable.
@@ -100,6 +111,10 @@ manifest, open blockers, `previous_hash`, and `entry_hash`.
 chain, resolves every recorded artifact, rebuilds v2 runs, and replays v2 gate decisions against
 the bundled policy in ledger order. A later gate may trust only an earlier decision that passed
 this replay. Legacy v1 entries remain readable but cannot prove a v2 promotion.
+
+V2 replay additionally requires run-before-gate ordering, one resolved path per package ID, and
+exact predecessor fingerprints for successor runs. Duplicate append of the same valid entry is
+idempotent; conflicting reuse is rejected.
 
 ## Gate Inputs
 

@@ -44,6 +44,12 @@ continue past that target. Resume from an existing package is allowed through pr
 the orchestrator revalidates all exact-package prerequisites instead of trusting the requested
 start stage.
 
+The transition counter measures work transitions and does not rewrite a verified target pass as
+blocked. A workflow cannot resume after `complete`, `killed`, transition-budget exhaustion,
+remediation-budget exhaustion, or two consecutive no-progress remediation laps. `waiting` and
+ordinary `blocked` states require explicit resume and revalidation after their external blocker
+changes.
+
 ## Independent Review
 
 Review is separated from implementation at two layers:
@@ -84,6 +90,12 @@ recorded after the run without changing scientific evidence.
 Because decisions are exact-package evidence, each successor receives fresh prerequisite gate
 decisions. A paper successor must pass `research_gate` before `paper_gate`; a risk successor must
 pass `research_gate` and `paper_gate` before `risk_review`.
+
+At a target gate, remediation is legal only when an already recorded exact-package `blocked` or
+`revise` decision fingerprints a schema-valid confirmed finding. A caller cannot assert progress:
+`moved_gate: true` requires a new ledger-recorded successor of the current package. Append and
+semantic replay reject out-of-order gate rows, duplicate package IDs at different paths, altered
+predecessors, reused run IDs, and v1 evidence used as authority.
 
 ## Artifact Responsibilities
 
