@@ -83,9 +83,9 @@ conservatively `standard`. The profile is a minimum rather than an override.
 
 | Resolved profile | Codex request | Claude request |
 | --- | --- | --- |
-| `economy` | `gpt-5.6-luna`, low effort | `haiku`, default effort |
-| `balanced` | `gpt-5.6-terra`, medium effort | `sonnet`, medium effort |
-| `deep` | `gpt-5.6-sol`, high effort | `opus`, high effort |
+| `economy` | `gpt-5.4-mini`, low effort | `haiku`, default effort |
+| `balanced` | `gpt-5.4`, medium effort | `sonnet`, medium effort |
+| `deep` | `gpt-5.5`, high effort | `opus`, high effort |
 
 `critical` raises the selected deep model to its critical effort. A worktree task or native
 subagent call cannot resolve below `balanced`. Role capability requirements are checked before

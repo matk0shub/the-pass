@@ -12,14 +12,15 @@ The cross-provider broker originally inherited each CLI's default model. That wa
 made cost, latency, and expected capability implicit. A routine source lookup and a critical audit
 could therefore use the same model, while a local user setting could silently change the choice.
 
-The provider contracts are different. Codex documents Luna as the efficient model for clear,
-repeatable work, Terra as the everyday workhorse, and Sol for ambiguous or high-value work. Claude
-Code documents Haiku for simple low-cost tasks, Sonnet for everyday coding, and Opus for complex
-reasoning. Both CLIs expose explicit model and reasoning-effort flags.
+The provider contracts are different. OpenAI documents `gpt-5.4-mini` as a lower-cost coding and
+subagent model, `gpt-5.4` as the more affordable professional coding model, and `gpt-5.5` as the
+flagship for complex reasoning and coding. Claude Code documents Haiku for simple low-cost tasks,
+Sonnet for everyday coding, and Opus for complex reasoning. Both CLIs expose explicit model and
+reasoning-effort flags.
 
 Sources reviewed on 2026-07-10:
 
-- [Codex models](https://developers.openai.com/codex/models)
+- [OpenAI models](https://developers.openai.com/api/docs/models)
 - [Codex configuration reference](https://developers.openai.com/codex/config-reference)
 - [Claude Code model configuration](https://code.claude.com/docs/en/model-config)
 - [Claude Code cost guidance](https://code.claude.com/docs/en/costs)
@@ -34,9 +35,9 @@ Profiles are:
 
 | Profile | Codex | Claude | Intended work |
 | --- | --- | --- | --- |
-| `economy` | `gpt-5.6-luna`, low | `haiku`, provider default effort | routine, well-specified read-only work |
-| `balanced` | `gpt-5.6-terra`, medium | `sonnet`, medium | normal research, review, and implementation |
-| `deep` | `gpt-5.6-sol`, high | `opus`, high | complex, ambiguous, or high-value work |
+| `economy` | `gpt-5.4-mini`, low | `haiku`, provider default effort | routine, well-specified read-only work |
+| `balanced` | `gpt-5.4`, medium | `sonnet`, medium | normal research, review, and implementation |
+| `deep` | `gpt-5.5`, high | `opus`, high | complex, ambiguous, or high-value work |
 
 `critical` workload uses the `deep` model and raises effort to the catalog's critical setting.
 `auto` workload resolves conservatively to `standard`. Implementation and native-subagent runs

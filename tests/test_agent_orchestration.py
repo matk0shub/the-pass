@@ -146,7 +146,7 @@ class AgentOrchestrationTests(unittest.TestCase):
                     self.assertNotIn("--add-dir", argv)
                     self.assertIn("read-only" if target == "codex" else "plan", argv)
                     if target == "codex":
-                        self.assertIn("gpt-5.6-terra", argv)
+                        self.assertIn("gpt-5.4", argv)
                         self.assertIn('model_reasoning_effort="medium"', argv)
                         self.assertIn("--ignore-user-config", argv)
                         self.assertIn("--ignore-rules", argv)
@@ -166,9 +166,9 @@ class AgentOrchestrationTests(unittest.TestCase):
         cases = [
             ("claude", "researcher", "read_only", "routine", "auto", False, "economy", "haiku", None),
             ("claude", "reviewer", "read_only", "standard", "auto", False, "balanced", "sonnet", "medium"),
-            ("codex", "reviewer", "read_only", "complex", "auto", False, "deep", "gpt-5.6-sol", "high"),
-            ("codex", "reviewer", "read_only", "critical", "auto", False, "deep", "gpt-5.6-sol", "xhigh"),
-            ("codex", "implementer", "worktree_patch", "routine", "economy", False, "balanced", "gpt-5.6-terra", "medium"),
+            ("codex", "reviewer", "read_only", "complex", "auto", False, "deep", "gpt-5.5", "high"),
+            ("codex", "reviewer", "read_only", "critical", "auto", False, "deep", "gpt-5.5", "xhigh"),
+            ("codex", "implementer", "worktree_patch", "routine", "economy", False, "balanced", "gpt-5.4", "medium"),
             ("claude", "researcher", "read_only", "routine", "auto", True, "balanced", "sonnet", "medium"),
             ("claude", "researcher", "read_only", "routine", "deep", False, "deep", "opus", "high"),
         ]

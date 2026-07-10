@@ -5,6 +5,21 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced preview-style Codex routing labels with public capability-tier aliases and preserved
+  explicit entitlement uncertainty in agent diagnostics.
+- Added asset-calendar annualization and distinct timestamped gross/net equity metrics.
+- Made ledger appends durable and serialized, automation output commits atomic, and V3
+  reproduction/package binding authoritative.
+
+### Fixed
+
+- Closed case/whitespace reviewer-independence bypasses, cross-instrument midpoint fills,
+  conflicting-event duplicate gaps, missing-price risk bypasses, and lifetime-as-daily loss checks.
+- Removed credential inheritance from paper workers, blocked future-received paper events, and
+  expanded nested secret-key detection for config and automation artifacts.
+
 ## [0.9.1] - 2026-07-10
 
 ### Added

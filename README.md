@@ -69,6 +69,9 @@ The release badge above remains the authority for the latest published tag. Read
 publication evidence for the installation fix is tracked in the
 [`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md) and
 [post-release verification](reports/POST_RELEASE_AUDIT_0.9.1.md).
+Post-release framework hardening and its exact verification matrix are recorded in the
+[repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md); those unreleased
+source changes do not alter the published tag or imply candidate promotion.
 
 | Area | Framework capability | Bundled candidate state |
 | --- | --- | --- |
@@ -309,6 +312,11 @@ The reference simulator is intentionally small and auditable. It models order li
 partial fills, depth, fees, slippage, funding, borrow, rolls, missed fills, and portfolio
 conservation. Mid-price fills are diagnostic-only and cannot support promotion.
 
+Gross and net path metrics use separate equity curves. Annualization records the asset calendar,
+median observation interval, and periods per year instead of assuming every market has 252 data
+points per year. Missing prices, malformed fills, conflicting event identities, and stale/future
+paper observations fail closed.
+
 The robustness layer includes walk-forward evaluation, purged splits and embargoes, PBO,
 PSR/DSR, deterministic bootstrap, Reality Check/SPA support, parameter sensitivity, regime
 splits, and execution stress. Risk limits are strategy-independent; a strategy cannot rewrite
@@ -404,6 +412,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.9.1` release notes](docs/public/RELEASE_NOTES_v0.9.1.md)
 - [`v0.9.1` release audit](reports/RELEASE_AUDIT_0.9.1.md)
 - [`v0.9.1` post-release verification](reports/POST_RELEASE_AUDIT_0.9.1.md)
+- [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)
 - [Usage guide](docs/public/USAGE_GUIDE.md)
 - [Release process](docs/public/RELEASE_PROCESS.md)

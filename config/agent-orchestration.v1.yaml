@@ -33,17 +33,17 @@ model_routing:
   providers:
     codex:
       economy:
-        model: gpt-5.6-luna
+        model: gpt-5.4-mini
         effort: low
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
       balanced:
-        model: gpt-5.6-terra
+        model: gpt-5.4
         effort: medium
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
       deep:
-        model: gpt-5.6-sol
+        model: gpt-5.5
         effort: high
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review]
