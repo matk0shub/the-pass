@@ -220,7 +220,10 @@ class WorkflowSupervisorTests(unittest.TestCase):
                     "stderr_sha256": "b" * 64,
                 }
 
-            with patch("the_pass.workflow_supervisor._run_driver", side_effect=blocked_driver):
+            with (
+                patch("the_pass.workflow_supervisor.shutil.which", return_value="/fake/cli"),
+                patch("the_pass.workflow_supervisor._run_driver", side_effect=blocked_driver),
+            ):
                 report, exit_code = supervise_workflow(
                     state_path,
                     driver_argv=["auto"],

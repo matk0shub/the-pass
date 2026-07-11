@@ -510,8 +510,6 @@ def supervise_workflow(
         for provider in available_providers
         if not auto_driver or shutil.which(provider) is not None
     )
-    if auto_driver and not routed_providers:
-        fail("auto driver requires an installed Codex or Claude CLI")
     effective_author_provider = author_provider
     for index in range(1, cycle_limit + 1):
         before = state
@@ -520,8 +518,17 @@ def supervise_workflow(
             route = route_workflow_stage(
                 before["stage"],
                 author_provider=effective_author_provider,
-                available_providers=routed_providers,
+                available_providers=routed_providers or available_providers,
             )
+            if auto_driver and route["execution"] == "agent":
+                if not routed_providers:
+                    fail("auto driver requires an installed Codex or Claude CLI")
+                if route["provider"] not in routed_providers:
+                    route = route_workflow_stage(
+                        before["stage"],
+                        author_provider=effective_author_provider,
+                        available_providers=routed_providers,
+                    )
         except (WorkflowError, ValueError) as exc:
             fail(str(exc))
         child_environment = dict(base_environment)
