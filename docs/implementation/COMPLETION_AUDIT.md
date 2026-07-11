@@ -54,6 +54,8 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.9.1` installation and usage release audit](../../reports/RELEASE_AUDIT_0.9.1.md)
 - [`v0.9.1` post-release verification](../../reports/POST_RELEASE_AUDIT_0.9.1.md)
 - [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
+- [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
+- [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 
 ## Local Completion Commands
 
@@ -76,7 +78,7 @@ Codex plugin developers should also run the bundled `plugin-creator/scripts/vali
 validator against the repo root from their local Codex install.
 
 Historical cross-version matrices remain in their versioned release audits. The current source
-matrix, including 181 tests on Python 3.9 and 3.12, clean wheel validation, dependency audit, and
+matrix, including 196 tests on Python 3.9 and 3.12, clean wheel validation, dependency audit, and
 explicit public adapter smoke, is recorded in the
 [repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md). Published
 `v0.9.1` installation evidence remains in its separate post-release audit.

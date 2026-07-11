@@ -1,5 +1,5 @@
 schema_version: 1
-interface_version: 0.9.1
+interface_version: 0.10.0
 
 limits:
   max_cross_provider_depth: 1
@@ -63,6 +63,22 @@ model_routing:
         effort: high
         critical_effort: xhigh
         capabilities: [structured_output, repository_read, repository_write, coding, research, review, native_subagents]
+
+workflow_routing:
+  deterministic_stages: [preflight, research_gate, paper_gate, risk_review, complete]
+  stages:
+    research: {role: researcher, workload_class: complex, preferred_provider: claude}
+    screen: {role: implementer, workload_class: complex, preferred_provider: codex}
+    backtest: {role: implementer, workload_class: critical, preferred_provider: codex}
+    robustness: {role: reviewer, workload_class: critical, preferred_provider: claude}
+    review_research: {role: reviewer, workload_class: critical, preferred_provider: independent}
+    paper_prepare: {role: implementer, workload_class: standard, preferred_provider: codex}
+    paper_observe: {role: implementer, workload_class: standard, preferred_provider: codex}
+    review_paper: {role: reviewer, workload_class: critical, preferred_provider: independent}
+    risk_prepare: {role: implementer, workload_class: complex, preferred_provider: codex}
+    plate: {role: implementer, workload_class: complex, preferred_provider: codex}
+    review_risk: {role: reviewer, workload_class: critical, preferred_provider: independent}
+    remediation: {role: implementer, workload_class: critical, preferred_provider: codex}
 
 providers:
   codex:

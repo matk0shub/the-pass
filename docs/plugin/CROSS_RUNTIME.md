@@ -11,7 +11,7 @@ model call, and `the-pass agents inspect` never executes a provider.
 Install the pinned repository marketplace and plugin:
 
 ```bash
-codex plugin marketplace add matk0shub/the-pass --ref v0.9.1
+codex plugin marketplace add mightymattys/the-pass --ref v0.9.1
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -36,7 +36,7 @@ claude plugin validate . --strict
 For the published release:
 
 ```text
-/plugin marketplace add matk0shub/the-pass
+/plugin marketplace add mightymattys/the-pass
 /plugin install the-pass@the-pass-tools
 /reload-plugins
 ```
@@ -96,6 +96,24 @@ The catalog lives in the packaged orchestration policy. Tasks cannot supply arbi
 `inspect` and every `agent_run` expose the requested model, effort, resolved profile, capabilities,
 rationale, and routing-policy fingerprint. The receipt describes the requested provider model;
 `doctor` and offline CI do not test account entitlement or provider alias resolution.
+
+Whole-workflow routing is stage-aware. `the-pass agents route --stage <stage>` prefers Claude for
+research synthesis and adversarial/statistical review, Codex for implementation, data, simulation,
+paper, and risk packaging, and a provider different from `--author-provider` for independent
+review. Preflight and gate-recording stages are deterministic and request no model. The route is
+policy-versioned and reports its fingerprint and rationale.
+
+To supervise the complete queue with locally authenticated provider CLIs:
+
+```bash
+the-pass workflow execute --state <state> --author-provider codex \
+  --execute --format json --driver auto
+```
+
+The auto driver gives the selected CLI workspace tools for exactly one stage, so it is distinct
+from the narrower cross-provider broker below. It is explicitly enabled, may incur provider cost,
+and is supervised through durable state and gate verification. The broker remains preferable for
+one isolated read-only review or unapplied worktree patch.
 
 Explicit execution:
 

@@ -235,7 +235,7 @@ def validate_plugin_manifest() -> None:
         or entry.get("version") != __version__
         or not isinstance(source, dict)
         or source.get("source") != "url"
-        or source.get("url") != "https://github.com/matk0shub/the-pass.git"
+        or source.get("url") != "https://github.com/mightymattys/the-pass.git"
         or source.get("ref") != f"v{__version__}"
     ):
         fail(f"Claude marketplace plugin must pin the public HTTPS repository at v{__version__}")

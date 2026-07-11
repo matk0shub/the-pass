@@ -5,6 +5,17 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+### Added
+
+- Added `the-pass workflow execute`, a bounded liveness supervisor with atomic cycle reports,
+  timeout/output limits, one-transition enforcement, resume-safe checkpoints, and explicit
+  inspect-versus-execute behavior.
+- Added `the-pass agents route` and versioned stage-aware routing across Codex and Claude model
+  profiles, including preferred specialists, capability floors, fallback selection, and mandatory
+  author/reviewer provider separation.
+- Added the explicit `--driver auto` mode, which executes agent stages with locally authenticated
+  provider CLIs while keeping preflight and gate recording deterministic.
+
 ### Changed
 
 - Replaced preview-style Codex routing labels with public capability-tier aliases and preserved
@@ -124,9 +135,9 @@ and the Keep a Changelog structure.
 
 - Initial public plugin, slash skills, artifact schemas, validators, and synthetic examples.
 
-[Unreleased]: https://github.com/matk0shub/the-pass/compare/v0.9.1...HEAD
-[0.9.1]: https://github.com/matk0shub/the-pass/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/matk0shub/the-pass/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/matk0shub/the-pass/compare/v0.7.1...v0.8.0
-[0.7.1]: https://github.com/matk0shub/the-pass/compare/v0.7.0...v0.7.1
-[0.7.0]: https://github.com/matk0shub/the-pass/compare/f9fb5e0...v0.7.0
+[Unreleased]: https://github.com/mightymattys/the-pass/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/mightymattys/the-pass/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/mightymattys/the-pass/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/mightymattys/the-pass/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/mightymattys/the-pass/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/mightymattys/the-pass/compare/f9fb5e0...v0.7.0

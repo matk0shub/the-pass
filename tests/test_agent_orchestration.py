@@ -22,10 +22,12 @@ from the_pass.agent_orchestration import (
     critical_paths_are_protected,
     dispatch_agent_task,
     inspect_agent_task,
+    route_workflow_stage,
     select_model,
     validate_agent_task_file,
 )
 from the_pass.validator import validate_artifact
+from the_pass.orchestration import load_pipeline_policy
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -195,6 +197,46 @@ class AgentOrchestrationTests(unittest.TestCase):
                     self.assertEqual(selection.reasoning_effort, effort)
                     inspection = inspect_agent_task(self.write_task(root, document))
                     self.assertEqual(inspection["model_selection"]["requested_model"], model)
+
+    def test_workflow_stage_router_selects_specialists_and_public_models(self) -> None:
+        research = route_workflow_stage("research")
+        backtest = route_workflow_stage("backtest")
+        review = route_workflow_stage("review_research", author_provider="codex")
+        deterministic = route_workflow_stage("research_gate")
+
+        self.assertEqual(
+            (research["provider"], research["requested_model"], research["role"]),
+            ("claude", "opus", "researcher"),
+        )
+        self.assertEqual(
+            (backtest["provider"], backtest["requested_model"], backtest["role"]),
+            ("codex", "gpt-5.5", "implementer"),
+        )
+        self.assertEqual((review["provider"], review["role"]), ("claude", "reviewer"))
+        self.assertEqual(deterministic["execution"], "deterministic")
+        self.assertIsNone(deterministic["requested_model"])
+
+    def test_workflow_router_falls_back_but_never_self_reviews(self) -> None:
+        fallback = route_workflow_stage(
+            "screen", available_providers=("claude",)
+        )
+        self.assertEqual(fallback["provider"], "claude")
+        with self.assertRaisesRegex(AgentSafetyError, "author_provider"):
+            route_workflow_stage("review_paper")
+        with self.assertRaisesRegex(AgentSafetyError, "no eligible provider"):
+            route_workflow_stage(
+                "review_paper",
+                author_provider="codex",
+                available_providers=("codex",),
+            )
+
+    def test_every_workflow_stage_has_a_valid_route(self) -> None:
+        stages = load_pipeline_policy()["stages"]
+        for stage in stages:
+            with self.subTest(stage=stage):
+                route = route_workflow_stage(stage, author_provider="codex")
+                self.assertEqual(route["stage"], stage)
+                self.assertIn(route["execution"], {"agent", "deterministic"})
 
     def test_model_router_rejects_catalog_without_required_capability(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
