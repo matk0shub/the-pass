@@ -4,6 +4,12 @@ Audit date: 2026-07-15
 Scope: post-audit workflow, dataset, reproduction, and reviewer-authority hardening
 Result: locally verified; GitHub pull-request CI verified
 
+Publication state: [PR #21](https://github.com/mightymattys/the-pass/pull/21) passed both required
+Python checks. Branch protection additionally requires an external approving review. The repository
+owner explicitly requested end-to-end completion and publication in this task; as in prior releases,
+the administrative merge exception may be used only after the complete local matrix and both
+required GitHub checks pass. The exception does not bypass or replace either CI context.
+
 ## Implemented Controls
 
 | Control | Result | Evidence |
