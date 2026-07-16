@@ -79,8 +79,9 @@ immutable backtest package.
   space, run receipt, metrics, cost waterfall, verdict, and static reports.
 - For a trusted local strategy, bundle the declared strategy source and replay inputs, then require
   `the-pass audit reproduce` to pass before independent review.
-- Promotion-capable sweeps must emit `robustness_report.v2` from generated purged walk-forward
-  folds, a preregistered null variant, mandatory stresses, and a policy-authorized hardened runtime.
+- Promotion-capable sweeps must emit `robustness_report.v3` from complete train/test cells,
+  deterministic train-only selection, generated purged walk-forward folds, a preregistered null
+  variant, mandatory stresses, execution config v2, and a policy-authorized hardened runtime.
 - Do not write promotion values directly into `metrics_report` or `verdict_report`; the later
   candidate assembler derives them from exact robustness and review evidence.
 - Check portfolio conservation and gross-to-net reconciliation after simulation.

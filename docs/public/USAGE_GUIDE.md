@@ -289,10 +289,11 @@ the-pass robustness sweep \
   --output "$WORK/robustness_report.json"
 ```
 
-Every cell is retained, including failures. The v2 report binds the source package, strategy,
-execution, events, variants, folds, null control, mandatory stresses, and runtime eligibility.
-Validation recomputes PBO, PSR, DSR, Reality Check/SPA, null comparison, and neighboring-parameter
-stability from the stored matrix.
+Every train and test cell is retained, including failures. The v3 report selects each fold winner
+only from train evidence, evaluates it on untouched test data, and binds the source package,
+strategy, execution v2 assumptions, events, variants, folds, null control, mandatory stresses, and
+runtime eligibility. Validation recomputes fold selection, effective sample size, PBO, PSR, DSR,
+Reality Check/SPA, null comparison, and neighboring-parameter stability from stored OOS returns.
 
 After a separate reviewer writes passing `findings.json`, do not edit metrics or verdict files:
 
@@ -312,12 +313,14 @@ If the ledger already contains any passed gate decision, add
 `workflow supersede`, and every later `receipts add`. This forces all mutations to replay the
 existing decisions against the same operator-controlled trust anchor.
 
-After research passage, `the-pass paper observe` can append immutable event batches. Each resume
-replays all batches, verifies the previous intent/fill prefix, enforces the same strategy,
-execution and risk hashes, and maintains an append-only invocation chain. It deliberately records
-`elapsed_time_verified: false`; offline replay cannot manufacture a 30-day or 60-day paper window.
-A worker failure after an immutable batch commit persists a frozen observation and invocation, so
-the batch cannot become untracked orphan evidence.
+After research passage, `the-pass paper observe` can append immutable event batches. Strategies
+with JSON-only `export_state()` and `import_state(state)` process only the new batch and store a
+fingerprinted simulator checkpoint. `--full-replay-interval-batches` periodically compares that
+incremental state with a clean cumulative replay. Strategies without checkpoint support remain on
+deterministic cumulative replay. Every mode enforces the same strategy, execution and risk hashes
+and maintains an append-only invocation chain. Offline replay cannot manufacture a 30-day or
+60-day paper window. A worker failure after an immutable batch commit persists a frozen
+observation and invocation, so the batch cannot become untracked orphan evidence.
 
 An external engine remains supported when it preserves the same contracts. It must export a
 package containing at least:

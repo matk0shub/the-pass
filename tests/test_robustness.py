@@ -20,11 +20,13 @@ from the_pass.robustness import (
     block_bootstrap_means,
     cscv_pbo,
     deflated_sharpe_ratio,
+    effective_sample_size,
     probabilistic_sharpe_ratio,
     purged_walk_forward_splits,
     reality_check,
     regime_statistics,
     run_stress_suite,
+    select_train_winner,
     sensitivity_report,
 )
 from the_pass.validator import validate_artifact
@@ -70,6 +72,21 @@ class StatisticalTests(unittest.TestCase):
             selected_value=10,
         )
         self.assertAlmostEqual(sensitivity["max_neighbor_degradation"], 0.2)
+
+    def test_train_selection_tie_break_and_effective_sample_are_deterministic(
+        self,
+    ) -> None:
+        self.assertEqual(
+            select_train_winner(
+                [0.02, 0.03, 0.03, -0.01], excluded_indices=(3,)
+            ),
+            1,
+        )
+        correlated = [0.01, 0.011, 0.012, 0.013] * 20
+        sample = effective_sample_size(correlated)
+        self.assertEqual(sample["observations"], 80.0)
+        self.assertGreaterEqual(sample["effective_observations"], 2.0)
+        self.assertLessEqual(sample["effective_observations"], 80.0)
 
 
 class StressAndRiskTests(unittest.TestCase):

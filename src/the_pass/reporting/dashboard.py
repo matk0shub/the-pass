@@ -90,6 +90,24 @@ def _duckdb_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         connection.close()
 
 
+def _robustness_rows(document: dict[str, Any]) -> list[list[Any]]:
+    if document.get("schema_version") == 3:
+        statistics = document["statistics"]
+        return [
+            ["Validation mode", document["validation"]["mode"]],
+            ["OOS observations", document["sample"]["observations"]],
+            ["Effective observations", document["sample"]["effective_observations"]],
+            ["PBO", statistics["pbo"]["pbo"]],
+            ["PSR", statistics["psr"]],
+            ["DSR", statistics["dsr"]],
+        ]
+    return [
+        ["PBO", document["pbo"]["pbo"]],
+        ["PSR", document["psr"]],
+        ["DSR", document["dsr"]],
+    ]
+
+
 def build_static_dashboard(repo_root: Path, output_dir: Path) -> list[Path]:
     repo_root = repo_root.resolve()
     output_dir = output_dir.resolve()
@@ -121,16 +139,17 @@ def build_static_dashboard(repo_root: Path, output_dir: Path) -> list[Path]:
         ),
         "robustness": _table(
             ["Metric", "Value"],
-            [["PBO", robustness["pbo"]["pbo"]], ["PSR", robustness["psr"]], ["DSR", robustness["dsr"]]],
+            _robustness_rows(robustness),
         ),
         "cost_waterfall": _table(
-            ["Run", "Gross", "Fees", "Slippage", "Net"],
+            ["Run", "Gross", "Fees", "Slippage", "Impact", "Net"],
             [
                 [
                     row["name"],
                     (cost := json.loads((repo_root / "examples" / "b2-baselines" / row["name"] / "package" / "cost_waterfall.json").read_text(encoding="utf-8")))["gross_pnl"],
                     cost["costs"]["fees"],
                     cost["costs"]["slippage"],
+                    cost["costs"].get("impact", 0),
                     cost["net_pnl"],
                 ]
                 for row in experiments

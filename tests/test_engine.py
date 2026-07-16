@@ -99,6 +99,44 @@ class FillModelTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Fill("bad", "TEST", "buy", Decimal(1), Decimal(100), 1, fee=Decimal("-1"))
 
+    def test_execution_v2_enforces_latency_participation_dynamic_fee_and_impact(
+        self,
+    ) -> None:
+        intent = SimulatedIntent(
+            "i-v2", "TEST", "buy", Decimal(10), 10, "market"
+        )
+        too_early = event(
+            EventType.BOOK_SNAPSHOT,
+            timestamp=11,
+            payload={
+                "bids": [["99", "8"]],
+                "asks": [["100", "8"]],
+                "fee_rate": "0.002",
+            },
+        )
+        eligible = event(
+            EventType.BOOK_SNAPSHOT,
+            timestamp=12,
+            payload={
+                "bids": [["99", "8"]],
+                "asks": [["100", "8"]],
+                "fee_rate": "0.002",
+            },
+        )
+        model = MarketDepthFillModel(
+            minimum_latency_ns=2,
+            participation_rate=Decimal("0.25"),
+        )
+        costs = LinearCostModel(
+            fee_rate=Decimal("0.001"), impact_bps=Decimal("10")
+        )
+        self.assertFalse(model.evaluate(intent, too_early, costs).fills)
+        fill = model.evaluate(intent, eligible, costs).fills[0]
+        self.assertEqual(fill.quantity, Decimal(2))
+        self.assertEqual(fill.fee, Decimal("0.4"))
+        self.assertEqual(fill.impact_cost, Decimal("0.2"))
+        self.assertEqual(fill.latency_ns, 3)
+
 
 class PortfolioTests(unittest.TestCase):
     def test_known_round_trip_conserves_accounting(self) -> None:
@@ -111,6 +149,62 @@ class PortfolioTests(unittest.TestCase):
         self.assertEqual(portfolio.fees, Decimal(2))
         self.assertEqual(portfolio.equity(), Decimal("100008"))
         portfolio.assert_conservation()
+
+    def test_futures_multiplier_funding_and_settlement_conserve_equity(self) -> None:
+        portfolio = AccountingPortfolio(Decimal("100000"))
+        portfolio.register_instrument(
+            "ES",
+            instrument_type="future",
+            multiplier=Decimal(50),
+        )
+        portfolio.apply_fill(
+            Fill("buy-es", "ES", "buy", Decimal(2), Decimal(100), 1)
+        )
+        self.assertEqual(
+            portfolio.mark("ES", Decimal(110), 2)["equity"],
+            Decimal("101000"),
+        )
+        funding = portfolio.apply_funding_rate(
+            "ES", rate=Decimal("0.01"), price=Decimal(110)
+        )
+        self.assertEqual(funding, Decimal(110))
+        self.assertEqual(portfolio.equity(), Decimal("100890"))
+        realized = portfolio.settle_position("ES", Decimal(105))
+        self.assertEqual(realized, Decimal(500))
+        self.assertEqual(portfolio.equity(), Decimal("100390"))
+        portfolio.assert_conservation()
+
+    def test_short_funding_is_a_credit_and_prediction_settlement_closes_inventory(
+        self,
+    ) -> None:
+        future = AccountingPortfolio(Decimal("100000"))
+        future.register_instrument(
+            "PERP",
+            instrument_type="future",
+            multiplier=Decimal(1),
+        )
+        future.apply_fill(
+            Fill("short", "PERP", "sell", Decimal(2), Decimal(100), 1)
+        )
+        credit = future.apply_funding_rate(
+            "PERP", rate=Decimal("0.01"), price=Decimal(100)
+        )
+        self.assertEqual(credit, Decimal("-2"))
+        self.assertEqual(future.equity(), Decimal("100002"))
+
+        prediction = AccountingPortfolio(Decimal("100"))
+        prediction.register_instrument(
+            "YES",
+            instrument_type="prediction",
+            multiplier=Decimal(1),
+        )
+        prediction.apply_fill(
+            Fill("buy-yes", "YES", "buy", Decimal(1), Decimal("0.4"), 1)
+        )
+        prediction.settle_position("YES", Decimal(1))
+        self.assertEqual(prediction.positions["YES"], Decimal(0))
+        self.assertEqual(prediction.equity(), Decimal("100.6"))
+        prediction.assert_conservation()
 
 
 class ScreenTests(unittest.TestCase):

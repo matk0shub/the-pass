@@ -149,11 +149,32 @@ def _gross_equities(result: RunnerResult) -> list[float]:
     fill_costs = sorted(
         (
             fill.event_time_ns,
-            fill.fee + fill.spread_cost + fill.slippage_cost,
+            fill.fee
+            + fill.spread_cost
+            + fill.slippage_cost
+            + fill.impact_cost,
         )
         for fill in result.fills
     )
-    total_allocated = sum((cost for _timestamp, cost in fill_costs), Decimal(0))
+    lifecycle_costs = []
+    for row in result.diagnostics.get("lifecycle_events", []):
+        timestamp = int(row.get("event_time_ns", 0))
+        if row.get("event_type") == "funding":
+            lifecycle_costs.append(
+                (
+                    timestamp,
+                    Decimal(str(row.get("amount", "0")))
+                    + Decimal(str(row.get("borrow_cost", "0"))),
+                )
+            )
+        elif row.get("event_type") == "settlement":
+            lifecycle_costs.append(
+                (timestamp, Decimal(str(row.get("roll_cost", "0"))))
+            )
+    timed_costs = sorted([*fill_costs, *lifecycle_costs])
+    total_allocated = sum(
+        (cost for _timestamp, cost in timed_costs), Decimal(0)
+    )
     total_costs = sum(result.cost_components.values(), Decimal(0))
     if total_allocated != total_costs:
         raise ValueError("gross equity reconstruction requires every monetary cost to be timestamped")
@@ -162,8 +183,8 @@ def _gross_equities(result: RunnerResult) -> list[float]:
     cursor = 0
     for row in result.equity_curve:
         timestamp = int(row["event_time_ns"])
-        while cursor < len(fill_costs) and fill_costs[cursor][0] <= timestamp:
-            cumulative += fill_costs[cursor][1]
+        while cursor < len(timed_costs) and timed_costs[cursor][0] <= timestamp:
+            cumulative += timed_costs[cursor][1]
             cursor += 1
         gross.append(float(Decimal(row["equity"]) + cumulative))
     return gross

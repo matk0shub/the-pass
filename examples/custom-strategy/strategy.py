@@ -24,6 +24,13 @@ class ExampleThresholdStrategy:
             )
         ]
 
+    def export_state(self):
+        return {}
+
+    def import_state(self, state):
+        if state != {}:
+            raise ValueError("example strategy checkpoint must be empty")
+
 
 def build_strategy(config):
     return ExampleThresholdStrategy(

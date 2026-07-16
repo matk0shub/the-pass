@@ -139,6 +139,10 @@ class ExecutionConfig:
     slippage_bps: Decimal
     queue_haircut: Decimal
     adverse_selection_haircut: Decimal
+    minimum_latency_ns: int
+    participation_rate: Decimal
+    impact_bps: Decimal
+    equity_sampling_interval: int
     promotion_eligible: bool
     fingerprint: str
 
@@ -157,6 +161,17 @@ class ExecutionConfig:
                     "adverse_selection_haircut": decimal_string(
                         self.adverse_selection_haircut
                     ),
+                }
+            )
+        if self.schema_version == 2:
+            document.update(
+                {
+                    "minimum_latency_ns": self.minimum_latency_ns,
+                    "participation_rate": decimal_string(
+                        self.participation_rate
+                    ),
+                    "impact_bps": decimal_string(self.impact_bps),
+                    "equity_sampling_interval": self.equity_sampling_interval,
                 }
             )
         return document
@@ -247,7 +262,16 @@ def load_strategy_descriptor(path: PathLike, *, workspace_root: PathLike) -> Str
 def parse_execution_config(document: Mapping[str, Any]) -> ExecutionConfig:
     if not isinstance(document, Mapping):
         raise ValueError("execution config must be a JSON object")
+    schema_version = document.get("schema_version")
+    if schema_version not in {1, 2} or isinstance(schema_version, bool):
+        raise ValueError("execution config schema_version must be 1 or 2")
     optional = {"queue_haircut", "adverse_selection_haircut"}
+    required_v2 = {
+        "minimum_latency_ns",
+        "participation_rate",
+        "impact_bps",
+        "equity_sampling_interval",
+    }
     _require_exact_keys(
         document,
         required={
@@ -256,12 +280,11 @@ def parse_execution_config(document: Mapping[str, Any]) -> ExecutionConfig:
             "fill_model",
             "fee_rate",
             "slippage_bps",
-        },
+        }
+        | (required_v2 if schema_version == 2 else set()),
         optional=optional,
         label="execution config",
     )
-    if document["schema_version"] != 1 or isinstance(document["schema_version"], bool):
-        raise ValueError("execution config schema_version must be 1")
     fill_model = _non_empty_string(document["fill_model"], field="fill_model")
     if fill_model not in FILL_MODELS:
         raise ValueError("fill_model is not supported")
@@ -281,9 +304,34 @@ def parse_execution_config(document: Mapping[str, Any]) -> ExecutionConfig:
     )
     if queue_haircut > 1 or adverse_selection_haircut > 1:
         raise ValueError("fill haircuts must be between zero and one")
+    minimum_latency_ns = int(document.get("minimum_latency_ns", 0))
+    equity_sampling_interval = int(
+        document.get("equity_sampling_interval", 1)
+    )
+    if (
+        isinstance(document.get("minimum_latency_ns", 0), bool)
+        or minimum_latency_ns < 0
+    ):
+        raise ValueError("minimum_latency_ns must be a non-negative integer")
+    if (
+        isinstance(document.get("equity_sampling_interval", 1), bool)
+        or equity_sampling_interval <= 0
+    ):
+        raise ValueError("equity_sampling_interval must be a positive integer")
+    participation_rate = _decimal_string(
+        document.get("participation_rate", "1"),
+        field="participation_rate",
+        positive=True,
+    )
+    impact_bps = _decimal_string(
+        document.get("impact_bps", "0"),
+        field="impact_bps",
+    )
+    if participation_rate > 1:
+        raise ValueError("participation_rate must be greater than zero and at most one")
 
     core = {
-        "schema_version": 1,
+        "schema_version": schema_version,
         "initial_cash": decimal_string(initial_cash),
         "fill_model": fill_model,
         "fee_rate": decimal_string(fee_rate),
@@ -296,14 +344,27 @@ def parse_execution_config(document: Mapping[str, Any]) -> ExecutionConfig:
                 "adverse_selection_haircut": decimal_string(adverse_selection_haircut),
             }
         )
+    if schema_version == 2:
+        core.update(
+            {
+                "minimum_latency_ns": minimum_latency_ns,
+                "participation_rate": decimal_string(participation_rate),
+                "impact_bps": decimal_string(impact_bps),
+                "equity_sampling_interval": equity_sampling_interval,
+            }
+        )
     return ExecutionConfig(
-        schema_version=1,
+        schema_version=schema_version,
         initial_cash=initial_cash,
         fill_model=fill_model,
         fee_rate=fee_rate,
         slippage_bps=slippage_bps,
         queue_haircut=queue_haircut,
         adverse_selection_haircut=adverse_selection_haircut,
+        minimum_latency_ns=minimum_latency_ns,
+        participation_rate=participation_rate,
+        impact_bps=impact_bps,
+        equity_sampling_interval=equity_sampling_interval,
         promotion_eligible=fill_model in PROMOTION_ELIGIBLE_FILL_MODELS,
         fingerprint=stable_fingerprint(core),
     )

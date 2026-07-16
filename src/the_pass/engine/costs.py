@@ -5,16 +5,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
+from the_pass.data.contracts import CanonicalEvent
+
 from .contracts import SimulatedIntent
 
 
 @dataclass(frozen=True)
 class LinearCostModel:
     fee_rate: Decimal = Decimal("0.001")
+    impact_bps: Decimal = Decimal(0)
 
     def __post_init__(self) -> None:
-        if not self.fee_rate.is_finite() or self.fee_rate < 0:
-            raise ValueError("fee_rate must be non-negative and finite")
+        if (
+            not self.fee_rate.is_finite()
+            or self.fee_rate < 0
+            or not self.impact_bps.is_finite()
+            or self.impact_bps < 0
+        ):
+            raise ValueError("fee_rate and impact_bps must be non-negative and finite")
 
     def costs(
         self,
@@ -23,10 +31,23 @@ class LinearCostModel:
         quantity: Decimal,
         *,
         reference_mid: Decimal | None,
+        event: CanonicalEvent | None = None,
     ) -> dict[str, Decimal]:
         notional = abs(price * quantity)
-        fee = notional * self.fee_rate
+        effective_fee_rate = self.fee_rate
+        if event is not None and "fee_rate" in event.payload:
+            observed = Decimal(str(event.payload["fee_rate"]))
+            if not observed.is_finite() or observed < 0:
+                raise ValueError("event fee_rate must be non-negative and finite")
+            effective_fee_rate = observed
+        fee = notional * effective_fee_rate
         spread = Decimal(0)
         if reference_mid is not None:
             spread = abs(price - reference_mid) * quantity
-        return {"fee": fee, "spread": spread, "slippage": Decimal(0)}
+        impact = notional * self.impact_bps / Decimal(10_000)
+        return {
+            "fee": fee,
+            "spread": spread,
+            "slippage": Decimal(0),
+            "impact": impact,
+        }

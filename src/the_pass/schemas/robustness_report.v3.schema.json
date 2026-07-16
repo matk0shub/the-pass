@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://the-pass.dev/schemas/robustness_report.v3.schema.json",
+  "title": "RobustnessReportV3",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "created_at",
+    "source_package_id",
+    "registration",
+    "status",
+    "cells",
+    "fold_results",
+    "failed_cells",
+    "oos_matrix",
+    "selected_oos_returns",
+    "sample",
+    "statistics",
+    "validation",
+    "null_baseline",
+    "stress_results",
+    "parameter_stability",
+    "promotion_eligible",
+    "report_fingerprint"
+  ],
+  "properties": {
+    "schema_version": { "const": 3 },
+    "id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source_package_id": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^pkg_[A-Fa-f0-9]{24}$" }
+      ]
+    },
+    "registration": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "descriptor_fingerprint",
+        "strategy_source_sha256",
+        "execution_fingerprint",
+        "events_fingerprint",
+        "variants",
+        "reference_variant_index",
+        "null_variant_index",
+        "selection_metric",
+        "tie_break",
+        "selection_policy",
+        "registration_fingerprint"
+      ],
+      "properties": {
+        "schema_version": { "const": 3 },
+        "descriptor_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+        "strategy_source_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+        "execution_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+        "events_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+        "variants": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "object" }
+        },
+        "reference_variant_index": { "type": "integer", "minimum": 0 },
+        "null_variant_index": { "type": "integer", "minimum": 0 },
+        "selection_metric": { "const": "net_return" },
+        "tie_break": { "const": "lowest_variant_index" },
+        "selection_policy": { "type": "string", "minLength": 1 },
+        "registration_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "status": { "enum": ["complete", "blocked"] },
+    "cells": {
+      "type": "array",
+      "minItems": 16,
+      "items": {
+        "type": "object",
+        "required": [
+          "fold_id",
+          "phase",
+          "variant_index",
+          "status",
+          "net_return",
+          "periodic_returns",
+          "result_fingerprint",
+          "runtime_promotion_eligible",
+          "execution_schema_version"
+        ],
+        "properties": {
+          "fold_id": { "type": "integer", "minimum": 0 },
+          "phase": { "enum": ["train", "test"] },
+          "variant_index": { "type": "integer", "minimum": 0 },
+          "status": { "enum": ["complete", "failed"] },
+          "net_return": { "type": ["number", "null"] },
+          "periodic_returns": {
+            "type": "array",
+            "items": { "type": "number" }
+          },
+          "result_fingerprint": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+            ]
+          },
+          "runtime_promotion_eligible": { "type": "boolean" },
+          "execution_schema_version": { "enum": [1, 2] },
+          "error_type": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "fold_results": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "fold_id",
+          "selected_variant_index",
+          "selected_train_score",
+          "selected_test_return"
+        ],
+        "properties": {
+          "fold_id": { "type": "integer", "minimum": 0 },
+          "selected_variant_index": { "type": ["integer", "null"], "minimum": 0 },
+          "selected_train_score": { "type": ["number", "null"] },
+          "selected_test_return": { "type": ["number", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "failed_cells": { "type": "integer", "minimum": 0 },
+    "oos_matrix": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "items": { "type": "number" }
+      }
+    },
+    "selected_oos_returns": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "sample": {
+      "type": "object",
+      "required": ["observations", "lag1_autocorrelation", "effective_observations"],
+      "properties": {
+        "observations": { "type": "number", "minimum": 0 },
+        "lag1_autocorrelation": { "type": "number", "minimum": -0.99, "maximum": 0.99 },
+        "effective_observations": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "statistics": {
+      "type": "object",
+      "required": ["pbo", "psr", "dsr", "reality_check"],
+      "properties": {
+        "pbo": {
+          "type": "object",
+          "required": ["pbo", "combinations", "logits", "selected_variants"],
+          "properties": {
+            "pbo": { "type": "number", "minimum": 0, "maximum": 1 },
+            "combinations": { "type": "integer", "minimum": 1 },
+            "logits": { "type": "array", "items": { "type": "number" } },
+            "selected_variants": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "additionalProperties": false
+        },
+        "psr": { "type": "number", "minimum": 0, "maximum": 1 },
+        "dsr": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reality_check": {
+          "type": "object",
+          "required": ["reality_check_pvalue", "spa_pvalue"],
+          "properties": {
+            "reality_check_pvalue": { "type": "number", "minimum": 0, "maximum": 1 },
+            "spa_pvalue": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "mode",
+        "purge_observations",
+        "embargo_observations",
+        "cscv_blocks",
+        "holdout_start_time",
+        "holdout_end_time",
+        "folds"
+      ],
+      "properties": {
+        "mode": { "enum": ["diagnostic_splits", "purged_walk_forward"] },
+        "purge_observations": { "type": "integer", "minimum": 0 },
+        "embargo_observations": { "type": "integer", "minimum": 0 },
+        "cscv_blocks": { "type": "integer", "minimum": 4, "multipleOf": 2 },
+        "holdout_start_time": { "type": "string", "format": "date-time" },
+        "holdout_end_time": { "type": "string", "format": "date-time" },
+        "folds": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "train_start",
+              "train_end",
+              "test_start",
+              "test_end",
+              "purged",
+              "embargoed"
+            ],
+            "properties": {
+              "id": { "type": "integer", "minimum": 0 },
+              "train_start": { "type": "integer", "minimum": 0 },
+              "train_end": { "type": "integer", "minimum": 1 },
+              "test_start": { "type": "integer", "minimum": 0 },
+              "test_end": { "type": "integer", "minimum": 1 },
+              "purged": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+              "embargoed": { "type": "array", "items": { "type": "integer", "minimum": 0 } }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "null_baseline": {
+      "type": "object",
+      "required": [
+        "variant_index",
+        "status",
+        "selected_mean_return",
+        "baseline_mean_return",
+        "summary"
+      ],
+      "properties": {
+        "variant_index": { "type": "integer", "minimum": 0 },
+        "status": { "enum": ["pass", "blocked"] },
+        "selected_mean_return": { "type": "number" },
+        "baseline_mean_return": { "type": "number" },
+        "summary": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "stress_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scenario", "status", "net_pnl", "summary"],
+        "properties": {
+          "scenario": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["pass", "blocked"] },
+          "net_pnl": { "type": "number" },
+          "summary": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "parameter_stability": {
+      "type": "object",
+      "required": ["status", "neighbor_indices", "worst_neighbor_return", "summary"],
+      "properties": {
+        "status": { "enum": ["pass", "blocked"] },
+        "neighbor_indices": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "worst_neighbor_return": { "type": ["number", "null"] },
+        "summary": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "promotion_eligible": { "type": "boolean" },
+    "report_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+  },
+  "additionalProperties": false
+}

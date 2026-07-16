@@ -37,7 +37,10 @@ signatures are recorded in the [`v0.13.0` trust-boundary plan](TRUST_BOUNDARY_HA
 [`v0.13.0` release audit](../../reports/RELEASE_AUDIT_0.13.0.md). Derived robustness evidence,
 external reviewer authorization, active sandbox probes, and deterministic candidate assembly are
 recorded in the [`v0.14.0` hardening report](EVIDENCE_TRUST_HARDENING_V0.14.md) and
-[`v0.14.0` release audit](../../reports/RELEASE_AUDIT_0.14.0.md).
+[`v0.14.0` release audit](../../reports/RELEASE_AUDIT_0.14.0.md). True train-select-test
+robustness, execution lifecycle v2, streaming replay, and checkpointed paper operation are recorded
+in the [`v0.15.0` scientific engine plan](SCIENTIFIC_ENGINE_UPGRADE_V0.15.md) and
+[`v0.15.0` release audit](../../reports/RELEASE_AUDIT_0.15.0.md).
 
 Trading roadmap gate evidence is tracked separately:
 
@@ -76,6 +79,8 @@ Trading roadmap gate evidence is tracked separately:
 - [`v0.13.0` post-release verification](../../reports/POST_RELEASE_AUDIT_0.13.0.md)
 - [`v0.14.0` evidence and trust hardening](EVIDENCE_TRUST_HARDENING_V0.14.md)
 - [`v0.14.0` release audit](../../reports/RELEASE_AUDIT_0.14.0.md)
+- [`v0.15.0` scientific engine upgrade](SCIENTIFIC_ENGINE_UPGRADE_V0.15.md)
+- [`v0.15.0` release audit](../../reports/RELEASE_AUDIT_0.15.0.md)
 - [Repository hardening audit](../../reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [Supervised workflow and model-routing plan](SUPERVISED_WORKFLOW_EXECUTION_PLAN.md)
 - [Supervised workflow implementation audit](../../reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
@@ -101,9 +106,9 @@ Codex plugin developers should also run the bundled `plugin-creator/scripts/vali
 validator against the repo root from their local Codex install.
 
 Historical cross-version matrices remain in their versioned release audits. The current local
-source matrix includes 241 tests, clean wheel installation, both plugin validations, the public
-repository validator, and an explicit read-only public diagnostic pipeline. GitHub Python 3.9 and
-3.12 results are release gates and are recorded in the versioned release audit after publication.
+source matrix, clean wheel installation, both plugin validations, public repository validator, and
+explicit read-only public diagnostic pipeline are recorded in the latest release audit. GitHub
+Python 3.9 and 3.12 results remain publication gates.
 
 ## Safety Result
 

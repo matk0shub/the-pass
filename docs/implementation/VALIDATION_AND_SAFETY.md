@@ -84,12 +84,14 @@ research- or paper-mode adapter. Calculated evidence means finite numeric values
 trade, and explicit order, fill, latency, fee, and slippage assumptions.
 The data manifest must also identify provider, license, time coverage, schema, quality policy,
 positive row count, and a 64-character SHA-256 fingerprint. Promotion cost waterfalls must
-contain numeric fee/spread/slippage components whose sum reconciles gross PnL to net PnL.
+contain numeric fee/spread/slippage/impact components whose sum reconciles gross PnL to net PnL.
 Promotion also requires an explicit out-of-sample or walk-forward holdout window, numeric
 DSR/PSR or PBO evidence, stress-test results, parameter-stability evidence, and a predefined
 train/test plus holdout policy. Those values must be derived from a schema-valid
-`robustness_report.v2`; validation recomputes its matrix statistics, null comparison, neighboring
-parameter stability, mandatory stress coverage, runtime eligibility, and fingerprints.
+`robustness_report.v3`; validation recomputes train-only fold selection, aligned OOS matrix
+statistics, effective sample size, null comparison, neighboring parameter stability, mandatory
+stress coverage, runtime eligibility, and fingerprints. Historical v2 reports are compatibility
+evidence only and cannot create a new paper candidate.
 Every source note used for promotion must contain the claim, evidence, limitations, market
 applicability, required tests, failure modes, and system requirements, and its status must be
 `reviewed` or `implemented`.

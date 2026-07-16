@@ -41,6 +41,7 @@ def fail(message: str) -> None:
 def main() -> int:
     root = ROOT / "reports" / "v3" / "donchian_momentum"
     required = {
+        "robustness_registration.json",
         "robustness_report.json",
         "stress_report.json",
         "risk_policy.json",
@@ -62,15 +63,30 @@ def main() -> int:
         if not result.ok:
             fail(f"V3 artifact does not validate: {name}")
 
+    robustness_validation = validate_artifact(
+        root / "robustness_report.json",
+        artifact_type="robustness_report",
+    )
+    if not robustness_validation.ok:
+        fail("V3 robustness_report.v3 does not validate")
     robustness = json.loads((root / "robustness_report.json").read_text(encoding="utf-8"))
+    registration = json.loads(
+        (root / "robustness_registration.json").read_text(encoding="utf-8")
+    )
+    if registration != robustness["registration"]:
+        fail("V3 standalone registration differs from embedded registration")
     for field in ("pbo", "psr", "dsr"):
-        value = robustness["pbo"]["pbo"] if field == "pbo" else robustness[field]
+        value = (
+            robustness["statistics"]["pbo"]["pbo"]
+            if field == "pbo"
+            else robustness["statistics"][field]
+        )
         if not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
             fail(f"V3 {field} is not a finite probability")
-    if not robustness["anchored_walk_forward"] or not robustness["rolling_walk_forward"]:
-        fail("V3 walk-forward evidence is empty")
-    if not all(robustness["finite_probability_checks"].values()):
-        fail("V3 finite probability checks did not pass")
+    if robustness["validation"]["mode"] != "purged_walk_forward":
+        fail("V3 robustness evidence is not purged walk-forward")
+    if len(robustness["fold_results"]) < 4 or robustness["failed_cells"]:
+        fail("V3 train-select-test matrix is incomplete")
 
     required_stress = {
         "fees_x1_5",
@@ -96,6 +112,8 @@ def main() -> int:
     report = json.loads((root / "risk_report.json").read_text(encoding="utf-8"))
     package = ROOT / "examples" / "b2-baselines" / "donchian_momentum" / "package"
     expected_package_id = build_run_entry(package)["package_id"]
+    if robustness.get("source_package_id") != expected_package_id:
+        fail("V3 robustness report does not bind the current Donchian package_id")
     if report.get("package_id") != expected_package_id:
         fail("V3 risk report does not bind the current Donchian package_id")
     if report["policy_hash"] != policy["policy_hash"] or report["verdict"] != "blocked":

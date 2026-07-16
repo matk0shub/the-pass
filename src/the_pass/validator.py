@@ -82,7 +82,8 @@ ARTIFACT_SCHEMAS["reviewer_key_registry"] = {
     1: "reviewer_key_registry.v1.schema.json"
 }
 ARTIFACT_SCHEMAS["robustness_report"] = {
-    2: "robustness_report.v2.schema.json"
+    2: "robustness_report.v2.schema.json",
+    3: "robustness_report.v3.schema.json",
 }
 ARTIFACT_TYPES = {
     artifact_type: versions[max(versions)]
@@ -561,6 +562,9 @@ def validate_workflow_artifact(
     """Check workflow invariants that are awkward or unclear in JSON Schema."""
 
     issues: list[ValidationIssue] = []
+
+    if artifact_type == "robustness_report" and document.get("schema_version") == 3:
+        return validate_robustness_report_v3(document)
 
     if artifact_type == "run_receipt":
         lineage_fields = (
@@ -1059,6 +1063,547 @@ def validate_workflow_artifact(
                 )
             )
 
+    return issues
+
+
+def validate_robustness_report_v3(
+    document: dict[str, Any],
+) -> list[ValidationIssue]:
+    """Recompute train selection and all OOS robustness evidence."""
+
+    from .data.contracts import stable_fingerprint
+    from .robustness import (
+        cscv_pbo,
+        deflated_sharpe_ratio,
+        effective_sample_size,
+        probabilistic_sharpe_ratio_effective,
+        reality_check,
+        select_train_winner,
+    )
+
+    issues: list[ValidationIssue] = []
+    registration = document["registration"]
+    registration_core = {
+        key: value
+        for key, value in registration.items()
+        if key != "registration_fingerprint"
+    }
+    if registration["registration_fingerprint"] != stable_fingerprint(
+        registration_core
+    ):
+        issues.append(
+            ValidationIssue(
+                "$.registration.registration_fingerprint",
+                "does not match the registered experiment inputs",
+            )
+        )
+    report_core = {
+        key: value
+        for key, value in document.items()
+        if key != "report_fingerprint"
+    }
+    if document["report_fingerprint"] != stable_fingerprint(report_core):
+        issues.append(
+            ValidationIssue(
+                "$.report_fingerprint",
+                "does not match the robustness report contents",
+            )
+        )
+
+    variants = registration["variants"]
+    variant_count = len(variants)
+    null_index = registration["null_variant_index"]
+    reference_index = registration["reference_variant_index"]
+    if null_index >= variant_count:
+        issues.append(
+            ValidationIssue(
+                "$.registration.null_variant_index",
+                "must identify a registered variant",
+            )
+        )
+    if reference_index >= variant_count or reference_index == null_index:
+        issues.append(
+            ValidationIssue(
+                "$.registration.reference_variant_index",
+                "must identify a non-null registered variant",
+            )
+        )
+
+    folds = document["validation"]["folds"]
+    for index, fold in enumerate(folds):
+        if fold["id"] != index:
+            issues.append(
+                ValidationIssue(
+                    f"$.validation.folds[{index}].id",
+                    "fold IDs must be contiguous and match result order",
+                )
+            )
+        if not (
+            fold["train_start"]
+            < fold["train_end"]
+            <= fold["test_start"]
+            < fold["test_end"]
+        ):
+            issues.append(
+                ValidationIssue(
+                    f"$.validation.folds[{index}]",
+                    "train and test intervals must be ordered and non-overlapping",
+                )
+            )
+        expected_purged = list(
+            range(
+                max(
+                    fold["train_end"],
+                    fold["test_start"]
+                    - document["validation"]["purge_observations"],
+                ),
+                fold["test_start"],
+            )
+        )
+        if fold["purged"] != expected_purged:
+            issues.append(
+                ValidationIssue(
+                    f"$.validation.folds[{index}].purged",
+                    "must exactly match the registered purge policy",
+                )
+            )
+        expected_embargo = list(
+            range(
+                fold["test_end"],
+                fold["test_end"]
+                + document["validation"]["embargo_observations"],
+            )
+        )
+        observed_embargo = fold["embargoed"]
+        embargo_matches = (
+            observed_embargo == expected_embargo
+            if index < len(folds) - 1
+            else observed_embargo == expected_embargo[: len(observed_embargo)]
+            and len(observed_embargo)
+            <= document["validation"]["embargo_observations"]
+        )
+        if not embargo_matches:
+            issues.append(
+                ValidationIssue(
+                    f"$.validation.folds[{index}].embargoed",
+                    "must exactly match the registered embargo policy",
+                )
+            )
+        if index and fold["test_start"] < (
+            folds[index - 1]["test_end"]
+            + len(folds[index - 1]["embargoed"])
+        ):
+            issues.append(
+                ValidationIssue(
+                    f"$.validation.folds[{index}].test_start",
+                    "test folds must advance beyond the prior test and embargo",
+                )
+            )
+
+    cells = document["cells"]
+    cell_map: dict[tuple[int, str, int], dict[str, Any]] = {}
+    for index, cell in enumerate(cells):
+        key = (cell["fold_id"], cell["phase"], cell["variant_index"])
+        if key in cell_map:
+            issues.append(
+                ValidationIssue(
+                    f"$.cells[{index}]",
+                    "duplicates a fold, phase, and variant cell",
+                )
+            )
+            continue
+        cell_map[key] = cell
+        if (
+            cell["fold_id"] >= len(folds)
+            or cell["variant_index"] >= variant_count
+        ):
+            issues.append(
+                ValidationIssue(
+                    f"$.cells[{index}]",
+                    "references an unknown fold or variant",
+                )
+            )
+            continue
+        if cell["status"] == "complete":
+            if (
+                not is_finite_number(cell["net_return"])
+                or not cell["periodic_returns"]
+                or cell["result_fingerprint"] is None
+                or any(
+                    not is_finite_number(value)
+                    for value in cell["periodic_returns"]
+                )
+            ):
+                issues.append(
+                    ValidationIssue(
+                        f"$.cells[{index}]",
+                        "complete cells require finite return evidence and a result fingerprint",
+                    )
+                )
+            else:
+                compounded = math.prod(
+                    1 + float(value) for value in cell["periodic_returns"]
+                ) - 1
+                if not math.isclose(
+                    float(cell["net_return"]),
+                    compounded,
+                    rel_tol=1e-10,
+                    abs_tol=1e-12,
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            f"$.cells[{index}].net_return",
+                            "must equal compounded periodic returns",
+                        )
+                    )
+        elif (
+            cell["net_return"] is not None
+            or cell["periodic_returns"]
+            or cell["result_fingerprint"] is not None
+            or cell["runtime_promotion_eligible"]
+        ):
+            issues.append(
+                ValidationIssue(
+                    f"$.cells[{index}]",
+                    "failed cells must not contain successful return or runtime evidence",
+                )
+            )
+
+    expected_cell_count = len(folds) * variant_count * 2
+    if len(cell_map) != expected_cell_count:
+        issues.append(
+            ValidationIssue(
+                "$.cells",
+                "must contain exactly one train and test cell per fold and variant",
+            )
+        )
+
+    fold_results = document["fold_results"]
+    variant_oos_returns: list[list[float]] = [
+        [] for _variant in variants
+    ]
+    selected_oos_returns: list[float] = []
+    null_oos_returns: list[float] = []
+    fold_neighbor_returns: list[float] = []
+    neighbor_indices: set[int] = set()
+    alignment_failed = False
+    for fold_index in range(len(folds)):
+        try:
+            train_cells = [
+                cell_map[(fold_index, "train", variant)]
+                for variant in range(variant_count)
+            ]
+            test_cells = [
+                cell_map[(fold_index, "test", variant)]
+                for variant in range(variant_count)
+            ]
+        except KeyError:
+            alignment_failed = True
+            continue
+        train_complete = all(
+            cell["status"] == "complete" for cell in train_cells
+        )
+        selected = (
+            select_train_winner(
+                [float(cell["net_return"]) for cell in train_cells],
+                excluded_indices=(null_index,),
+            )
+            if train_complete
+            else None
+        )
+        observed_fold = fold_results[fold_index]
+        expected_train = (
+            train_cells[selected]["net_return"] if selected is not None else None
+        )
+        expected_test = (
+            test_cells[selected]["net_return"]
+            if selected is not None
+            and test_cells[selected]["status"] == "complete"
+            else None
+        )
+        if (
+            observed_fold["fold_id"] != fold_index
+            or observed_fold["selected_variant_index"] != selected
+            or observed_fold["selected_train_score"] != expected_train
+            or observed_fold["selected_test_return"] != expected_test
+        ):
+            issues.append(
+                ValidationIssue(
+                    f"$.fold_results[{fold_index}]",
+                    "must be derived only from deterministic train-cell selection",
+                )
+            )
+        test_complete = all(
+            cell["status"] == "complete" for cell in test_cells
+        )
+        lengths = {
+            len(cell["periodic_returns"]) for cell in test_cells
+        }
+        if not test_complete or len(lengths) != 1:
+            alignment_failed = True
+            continue
+        for variant, cell in enumerate(test_cells):
+            variant_oos_returns[variant].extend(
+                float(value) for value in cell["periodic_returns"]
+            )
+        if selected is None:
+            alignment_failed = True
+            continue
+        selected_oos_returns.extend(
+            float(value) for value in test_cells[selected]["periodic_returns"]
+        )
+        null_oos_returns.extend(
+            float(value)
+            for value in test_cells[null_index]["periodic_returns"]
+        )
+        fold_neighbors = []
+        for neighbor in (selected - 1, selected + 1):
+            if 0 <= neighbor < variant_count and neighbor != null_index:
+                neighbor_indices.add(neighbor)
+                fold_neighbors.append(
+                    float(test_cells[neighbor]["net_return"])
+                )
+        if fold_neighbors:
+            fold_neighbor_returns.append(min(fold_neighbors))
+
+    non_complete = sum(
+        cell["status"] != "complete" for cell in cells
+    )
+    expected_failed = non_complete + int(alignment_failed)
+    if document["failed_cells"] != expected_failed:
+        issues.append(
+            ValidationIssue(
+                "$.failed_cells",
+                "must equal failed cells plus any OOS alignment failure",
+            )
+        )
+    expected_status = (
+        "blocked" if non_complete or alignment_failed else "complete"
+    )
+    if document["status"] != expected_status:
+        issues.append(
+            ValidationIssue(
+                "$.status",
+                "must be derived from complete and aligned train/test cells",
+            )
+        )
+
+    expected_matrix = (
+        [
+            [
+                variant_oos_returns[column][row]
+                for column in range(variant_count)
+            ]
+            for row in range(len(selected_oos_returns))
+        ]
+        if not alignment_failed
+        and len({len(values) for values in variant_oos_returns}) == 1
+        else []
+    )
+    if document["oos_matrix"] != expected_matrix:
+        issues.append(
+            ValidationIssue(
+                "$.oos_matrix",
+                "must be the aligned periodic OOS return matrix for all variants",
+            )
+        )
+    if document["selected_oos_returns"] != selected_oos_returns:
+        issues.append(
+            ValidationIssue(
+                "$.selected_oos_returns",
+                "must stitch only each fold's train-selected test returns",
+            )
+        )
+
+    complete_statistics = (
+        not alignment_failed
+        and not non_complete
+        and len(selected_oos_returns) >= 4
+        and bool(expected_matrix)
+    )
+    if complete_statistics:
+        expected_sample = effective_sample_size(selected_oos_returns)
+        if document["sample"] != expected_sample:
+            issues.append(
+                ValidationIssue(
+                    "$.sample",
+                    "must reflect autocorrelation-adjusted selected OOS observations",
+                )
+            )
+        trial_sharpes = []
+        for values in variant_oos_returns:
+            average = sum(values) / len(values)
+            variance = sum(
+                (value - average) ** 2 for value in values
+            ) / max(1, len(values) - 1)
+            trial_sharpes.append(
+                average / variance**0.5 if variance else 0.0
+            )
+        blocks = min(8, len(expected_matrix))
+        blocks -= blocks % 2
+        expected_statistics = {
+            "pbo": cscv_pbo(expected_matrix, blocks=blocks),
+            "psr": probabilistic_sharpe_ratio_effective(
+                selected_oos_returns,
+                effective_observations=expected_sample[
+                    "effective_observations"
+                ],
+            ),
+            "dsr": deflated_sharpe_ratio(
+                selected_oos_returns,
+                trial_sharpes=trial_sharpes,
+                effective_observations=expected_sample[
+                    "effective_observations"
+                ],
+            ),
+            "reality_check": reality_check(
+                expected_matrix,
+                bootstrap_samples=500,
+                seed=7,
+            ),
+        }
+        if document["statistics"] != expected_statistics:
+            issues.append(
+                ValidationIssue(
+                    "$.statistics",
+                    "does not match recomputation from aligned OOS periodic returns",
+                )
+            )
+        if document["validation"]["cscv_blocks"] != blocks:
+            issues.append(
+                ValidationIssue(
+                    "$.validation.cscv_blocks",
+                    "must match the deterministic OOS CSCV block count",
+                )
+            )
+    else:
+        expected_sample = document["sample"]
+
+    selected_mean = (
+        sum(selected_oos_returns) / len(selected_oos_returns)
+        if selected_oos_returns
+        else 0.0
+    )
+    null_mean = (
+        sum(null_oos_returns) / len(null_oos_returns)
+        if null_oos_returns
+        else 0.0
+    )
+    null_status = (
+        "pass"
+        if complete_statistics and selected_mean > null_mean
+        else "blocked"
+    )
+    baseline = document["null_baseline"]
+    if (
+        baseline["variant_index"] != null_index
+        or not math.isclose(
+            baseline["selected_mean_return"],
+            selected_mean,
+            rel_tol=1e-12,
+            abs_tol=1e-15,
+        )
+        or not math.isclose(
+            baseline["baseline_mean_return"],
+            null_mean,
+            rel_tol=1e-12,
+            abs_tol=1e-15,
+        )
+        or baseline["status"] != null_status
+    ):
+        issues.append(
+            ValidationIssue(
+                "$.null_baseline",
+                "must compare train-selected OOS returns with the aligned null variant",
+            )
+        )
+
+    worst_neighbor = (
+        min(fold_neighbor_returns) if fold_neighbor_returns else None
+    )
+    stability_status = (
+        "pass"
+        if complete_statistics
+        and len(fold_neighbor_returns) == len(folds)
+        and worst_neighbor is not None
+        and worst_neighbor > 0
+        else "blocked"
+    )
+    stability = document["parameter_stability"]
+    observed_worst = stability["worst_neighbor_return"]
+    worst_matches = (
+        worst_neighbor is None
+        and observed_worst is None
+        or worst_neighbor is not None
+        and is_finite_number(observed_worst)
+        and math.isclose(
+            float(observed_worst),
+            worst_neighbor,
+            rel_tol=1e-12,
+            abs_tol=1e-15,
+        )
+    )
+    if (
+        stability["neighbor_indices"] != sorted(neighbor_indices)
+        or not worst_matches
+        or stability["status"] != stability_status
+    ):
+        issues.append(
+            ValidationIssue(
+                "$.parameter_stability",
+                "must be derived from each train-selected variant's OOS neighbors",
+            )
+        )
+
+    mandatory_stress = {
+        "fees_x1_5",
+        "slippage_x2",
+        "latency_x2",
+        "depth_x0_5",
+        "depth_x0_25",
+        "maker_fill_probability_x0_5",
+        "funding_worst_decile",
+        "exchange_outage",
+        "missing_interval",
+        "correlated_gap",
+        "forced_deleverage",
+    }
+    stress_names = {
+        row["scenario"] for row in document["stress_results"]
+    }
+    if len(stress_names) != len(document["stress_results"]):
+        issues.append(
+            ValidationIssue(
+                "$.stress_results",
+                "stress scenario names must be unique",
+            )
+        )
+    promotion_conditions = (
+        document["status"] == "complete"
+        and document["validation"]["mode"] == "purged_walk_forward"
+        and complete_statistics
+        and expected_sample.get("effective_observations", 0) >= 30
+        and null_status == "pass"
+        and stability_status == "pass"
+        and mandatory_stress <= stress_names
+        and all(
+            row["status"] == "pass"
+            for row in document["stress_results"]
+        )
+        and all(
+            cell["runtime_promotion_eligible"]
+            and cell["execution_schema_version"] == 2
+            for cell in cells
+        )
+        and isinstance(document["source_package_id"], str)
+    )
+    if document["promotion_eligible"] != promotion_conditions:
+        issues.append(
+            ValidationIssue(
+                "$.promotion_eligible",
+                "must be derived from train-only selection, aligned OOS statistics, execution v2, stress, and runtime evidence",
+            )
+        )
     return issues
 
 
@@ -1819,10 +2364,17 @@ def validate_package(
             issues.append(
                 ValidationIssue(
                     "$.robustness_report",
-                    "paper_candidate requires a validated robustness_report.v2 artifact",
+                    "paper_candidate requires a validated robustness_report.v3 artifact",
                 )
             )
         else:
+            if robustness_report.get("schema_version") != 3:
+                issues.append(
+                    ValidationIssue(
+                        "$.robustness_report.schema_version",
+                        "new paper_candidate packages require robustness_report.v3",
+                    )
+                )
             source_package_id = receipt.get("supersedes_package_id")
             if (
                 source_package_id is not None
@@ -1981,7 +2533,7 @@ def validate_package(
                 )
             )
         cost_components = costs.get("costs", {})
-        required_costs = ("fees", "spread", "slippage")
+        required_costs = ("fees", "spread", "slippage", "impact")
         if not isinstance(cost_components, dict) or any(
             not is_finite_number(cost_components.get(field))
             or cost_components[field] < 0
@@ -1990,7 +2542,7 @@ def validate_package(
             issues.append(
                 ValidationIssue(
                     "$.cost_waterfall.costs",
-                    "paper_candidate requires non-negative numeric fees, spread, and slippage",
+                    "paper_candidate requires non-negative numeric fees, spread, slippage, and impact",
                 )
             )
         elif is_finite_number(costs.get("gross_pnl")) and is_finite_number(

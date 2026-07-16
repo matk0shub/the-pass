@@ -28,12 +28,28 @@ def _mid(event: CanonicalEvent) -> Decimal | None:
 
 @dataclass(frozen=True)
 class MarketDepthFillModel:
+    minimum_latency_ns: int = 0
+    participation_rate: Decimal = Decimal(1)
     promotion_eligible: bool = True
+
+    def __post_init__(self) -> None:
+        if self.minimum_latency_ns < 0:
+            raise ValueError("minimum_latency_ns must be non-negative")
+        if (
+            not self.participation_rate.is_finite()
+            or self.participation_rate <= 0
+            or self.participation_rate > 1
+        ):
+            raise ValueError("participation_rate must be in (0, 1]")
 
     def evaluate(self, intent: SimulatedIntent, event: CanonicalEvent, cost_model: CostModel) -> FillOutcome:
         if intent.intent_type != "market" or event.instrument_id != intent.instrument_id:
             return FillOutcome(remaining_quantity=intent.quantity)
-        if event.receive_time_ns <= intent.decision_time_ns or event.event_type != EventType.BOOK_SNAPSHOT:
+        if (
+            event.receive_time_ns
+            <= intent.decision_time_ns + self.minimum_latency_ns
+            or event.event_type != EventType.BOOK_SNAPSHOT
+        ):
             return FillOutcome(remaining_quantity=intent.quantity)
         remaining = intent.quantity
         fills = []
@@ -41,8 +57,14 @@ class MarketDepthFillModel:
         for price, available in _levels(event, intent.side):
             if remaining <= 0:
                 break
-            quantity = min(available, remaining)
-            costs = cost_model.costs(intent, price, quantity, reference_mid=reference_mid)
+            quantity = min(available * self.participation_rate, remaining)
+            costs = cost_model.costs(
+                intent,
+                price,
+                quantity,
+                reference_mid=reference_mid,
+                event=event,
+            )
             fills.append(
                 Fill(
                     intent_id=intent.intent_id,
@@ -55,6 +77,8 @@ class MarketDepthFillModel:
                     spread_cost=costs["spread"],
                     slippage_cost=costs["slippage"],
                     evidence=f"book_snapshot:{event.ingest_id}",
+                    impact_cost=costs.get("impact", Decimal(0)),
+                    latency_ns=event.receive_time_ns - intent.decision_time_ns,
                 )
             )
             remaining -= quantity
@@ -67,17 +91,30 @@ class MarketDepthFillModel:
 class LimitEvidenceFillModel:
     queue_haircut: Decimal = Decimal("0.5")
     adverse_selection_haircut: Decimal = Decimal("0.75")
+    minimum_latency_ns: int = 0
+    participation_rate: Decimal = Decimal(1)
     promotion_eligible: bool = True
 
     def __post_init__(self) -> None:
         for value in (self.queue_haircut, self.adverse_selection_haircut):
             if not value.is_finite() or value < 0 or value > 1:
                 raise ValueError("fill haircuts must be between zero and one")
+        if self.minimum_latency_ns < 0:
+            raise ValueError("minimum_latency_ns must be non-negative")
+        if (
+            not self.participation_rate.is_finite()
+            or self.participation_rate <= 0
+            or self.participation_rate > 1
+        ):
+            raise ValueError("participation_rate must be in (0, 1]")
 
     def evaluate(self, intent: SimulatedIntent, event: CanonicalEvent, cost_model: CostModel) -> FillOutcome:
         if intent.intent_type != "limit" or event.instrument_id != intent.instrument_id:
             return FillOutcome(remaining_quantity=intent.quantity)
-        if event.receive_time_ns <= intent.decision_time_ns:
+        if (
+            event.receive_time_ns
+            <= intent.decision_time_ns + self.minimum_latency_ns
+        ):
             return FillOutcome(remaining_quantity=intent.quantity)
         price = None
         available = Decimal(0)
@@ -95,10 +132,24 @@ class LimitEvidenceFillModel:
                 available = sum((size for _level_price, size in eligible), Decimal(0))
         if price is None:
             return FillOutcome(remaining_quantity=intent.quantity)
-        quantity = min(intent.quantity, available * self.queue_haircut * self.adverse_selection_haircut)
+        quantity = min(
+            intent.quantity,
+            available
+            * self.participation_rate
+            * self.queue_haircut
+            * self.adverse_selection_haircut,
+        )
         if quantity <= 0:
             return FillOutcome(remaining_quantity=intent.quantity, status="missed", reason="queue and adverse-selection haircut")
-        costs = cost_model.costs(intent, price, quantity, reference_mid=_mid(event) if event.event_type != EventType.TRADE else None)
+        costs = cost_model.costs(
+            intent,
+            price,
+            quantity,
+            reference_mid=(
+                _mid(event) if event.event_type != EventType.TRADE else None
+            ),
+            event=event,
+        )
         fill = Fill(
             intent_id=intent.intent_id,
             instrument_id=intent.instrument_id,
@@ -110,6 +161,8 @@ class LimitEvidenceFillModel:
             spread_cost=costs["spread"],
             slippage_cost=costs["slippage"],
             evidence=f"subsequent_{event.event_type.value}:{event.ingest_id}",
+            impact_cost=costs.get("impact", Decimal(0)),
+            latency_ns=event.receive_time_ns - intent.decision_time_ns,
         )
         remaining = intent.quantity - quantity
         return FillOutcome((fill,), remaining, "filled" if remaining == 0 else "partial", "")
@@ -118,21 +171,34 @@ class LimitEvidenceFillModel:
 @dataclass(frozen=True)
 class BarFillModel:
     slippage_bps: Decimal = Decimal("5")
+    minimum_latency_ns: int = 0
     promotion_eligible: bool = True
 
     def __post_init__(self) -> None:
         if not self.slippage_bps.is_finite() or self.slippage_bps < 0:
             raise ValueError("slippage_bps must be non-negative and finite")
+        if self.minimum_latency_ns < 0:
+            raise ValueError("minimum_latency_ns must be non-negative")
 
     def evaluate(self, intent: SimulatedIntent, event: CanonicalEvent, cost_model: CostModel) -> FillOutcome:
         if intent.intent_type != "bar" or event.instrument_id != intent.instrument_id:
             return FillOutcome(remaining_quantity=intent.quantity)
-        if event.receive_time_ns <= intent.decision_time_ns or event.event_type != EventType.BAR:
+        if (
+            event.receive_time_ns
+            <= intent.decision_time_ns + self.minimum_latency_ns
+            or event.event_type != EventType.BAR
+        ):
             return FillOutcome(remaining_quantity=intent.quantity)
         open_price = Decimal(str(event.payload["open"]))
         direction = Decimal(1) if intent.side == "buy" else Decimal(-1)
         price = open_price * (Decimal(1) + direction * self.slippage_bps / Decimal(10_000))
-        costs = cost_model.costs(intent, price, intent.quantity, reference_mid=open_price)
+        costs = cost_model.costs(
+            intent,
+            price,
+            intent.quantity,
+            reference_mid=open_price,
+            event=event,
+        )
         slippage = abs(price - open_price) * intent.quantity
         fill = Fill(
             intent_id=intent.intent_id,
@@ -145,6 +211,8 @@ class BarFillModel:
             spread_cost=Decimal(0),
             slippage_cost=slippage,
             evidence=f"next_bar_open:{event.ingest_id}",
+            impact_cost=costs.get("impact", Decimal(0)),
+            latency_ns=event.receive_time_ns - intent.decision_time_ns,
         )
         return FillOutcome((fill,), Decimal(0), "filled", "")
 
@@ -164,7 +232,13 @@ class DiagnosticMidpointFillModel:
         midpoint = _mid(event)
         if midpoint is None:
             return FillOutcome(remaining_quantity=intent.quantity, promotion_eligible=False)
-        costs = cost_model.costs(intent, midpoint, intent.quantity, reference_mid=midpoint)
+        costs = cost_model.costs(
+            intent,
+            midpoint,
+            intent.quantity,
+            reference_mid=midpoint,
+            event=event,
+        )
         fill = Fill(
             intent.intent_id,
             intent.instrument_id,

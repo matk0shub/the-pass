@@ -54,6 +54,8 @@ class Fill:
     spread_cost: Decimal = Decimal(0)
     slippage_cost: Decimal = Decimal(0)
     evidence: str = ""
+    impact_cost: Decimal = Decimal(0)
+    latency_ns: int = 0
 
     def __post_init__(self) -> None:
         if not self.intent_id or not self.instrument_id:
@@ -64,12 +66,23 @@ class Fill:
             raise ValueError("fill quantity must be positive and finite")
         if not self.price.is_finite() or self.price <= 0:
             raise ValueError("fill price must be positive and finite")
-        for field_name in ("fee", "spread_cost", "slippage_cost"):
+        for field_name in (
+            "fee",
+            "spread_cost",
+            "slippage_cost",
+            "impact_cost",
+        ):
             value = getattr(self, field_name)
             if not value.is_finite() or value < 0:
                 raise ValueError(f"fill {field_name} must be non-negative and finite")
         if not isinstance(self.event_time_ns, int) or isinstance(self.event_time_ns, bool) or self.event_time_ns < 0:
             raise ValueError("fill event_time_ns must be non-negative UTC nanoseconds")
+        if (
+            not isinstance(self.latency_ns, int)
+            or isinstance(self.latency_ns, bool)
+            or self.latency_ns < 0
+        ):
+            raise ValueError("fill latency_ns must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -103,6 +116,7 @@ class RunnerResult:
     cost_components: dict[str, Decimal]
     final_snapshot: dict[str, Any]
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    checkpoint: dict[str, Any] | None = None
 
 
 class StrategyRunner(Protocol):
@@ -116,7 +130,15 @@ class FeatureProvider(Protocol):
 
 
 class CostModel(Protocol):
-    def costs(self, intent: SimulatedIntent, price: Decimal, quantity: Decimal, *, reference_mid: Decimal | None) -> dict[str, Decimal]: ...
+    def costs(
+        self,
+        intent: SimulatedIntent,
+        price: Decimal,
+        quantity: Decimal,
+        *,
+        reference_mid: Decimal | None,
+        event: CanonicalEvent | None = None,
+    ) -> dict[str, Decimal]: ...
 
 
 class FillModel(Protocol):

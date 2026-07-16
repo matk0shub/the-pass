@@ -25,6 +25,28 @@ def build_strategy(config):
     return Strategy()
 """
 
+CHECKPOINT_STRATEGY = """
+from decimal import Decimal
+from the_pass.engine.contracts import SimulatedIntent
+
+class Strategy:
+    strategy_id = "paper_fixture_v1"
+    def __init__(self):
+        self.entered = False
+    def on_event(self, event, context):
+        if self.entered:
+            return []
+        self.entered = True
+        return [SimulatedIntent("entry-1", event.instrument_id, "buy", Decimal("1"), context.decision_time_ns, "bar")]
+    def export_state(self):
+        return {"entered": self.entered}
+    def import_state(self, state):
+        self.entered = bool(state["entered"])
+
+def build_strategy(config):
+    return Strategy()
+"""
+
 
 class PaperObserverTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -67,7 +89,9 @@ class PaperObserverTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def observe(self, rows: list, batch_id: str) -> dict:
+    def observe(
+        self, rows: list, batch_id: str, *, audit_interval: int = 10
+    ) -> dict:
         return observe_strategy(
             rows,
             batch_id=batch_id,
@@ -78,6 +102,7 @@ class PaperObserverTests(unittest.TestCase):
             observation_time_ns=rows[-1].receive_time_ns,
             observation_dir=self.observation,
             workspace_root=self.root,
+            full_replay_interval_batches=audit_interval,
         )
 
     def test_two_batches_resume_and_duplicate_is_idempotent(self) -> None:
@@ -92,6 +117,45 @@ class PaperObserverTests(unittest.TestCase):
         self.assertFalse(second["elapsed_time_verified"])
         self.assertFalse(second["paper_gate_eligible"])
         self.assertEqual(len((self.observation / "invocations.jsonl").read_text().splitlines()), 2)
+
+    def test_checkpoint_strategy_processes_only_new_batch_and_matches_full_replay(
+        self,
+    ) -> None:
+        (self.root / "strategy.py").write_text(
+            CHECKPOINT_STRATEGY, encoding="utf-8"
+        )
+        execution = json.loads(self.execution.read_text(encoding="utf-8"))
+        execution.update(
+            {
+                "schema_version": 2,
+                "minimum_latency_ns": 0,
+                "participation_rate": "1",
+                "impact_bps": "0",
+                "equity_sampling_interval": 1,
+            }
+        )
+        self.execution.write_text(json.dumps(execution), encoding="utf-8")
+
+        first = self.observe(
+            self.events[:48], "checkpoint-001", audit_interval=2
+        )
+        second = self.observe(
+            self.events[48:], "checkpoint-002", audit_interval=2
+        )
+
+        self.assertEqual(first["scaling_mode"], "incremental_checkpoint")
+        self.assertEqual(second["events"], len(self.events))
+        self.assertEqual(second["fills"], 1)
+        self.assertTrue(second["checkpoint_audits"][0]["parity"])
+        current = json.loads(
+            (self.observation / "current-result.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(current["events_processed"], 48)
+        self.assertTrue(
+            (self.observation / "current-checkpoint.json").is_file()
+        )
 
     def test_conflicting_batch_and_config_drift_freeze_closed(self) -> None:
         self.observe(self.events[:48], "batch-001")

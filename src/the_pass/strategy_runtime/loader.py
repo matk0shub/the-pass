@@ -85,7 +85,12 @@ def load_strategy_factory(descriptor: StrategyDescriptor) -> Callable[[dict], An
     return factory
 
 
-def build_strategy(descriptor: StrategyDescriptor) -> Any:
+def build_strategy(
+    descriptor: StrategyDescriptor,
+    *,
+    state: Any = None,
+    require_checkpoint: bool = False,
+) -> Any:
     factory = load_strategy_factory(descriptor)
     config = canonical_value(descriptor.config, allow_float=True)
     with block_forbidden_imports():
@@ -97,4 +102,17 @@ def build_strategy(descriptor: StrategyDescriptor) -> Any:
         raise ValueError("strategy factory strategy_id does not match descriptor")
     if not callable(getattr(strategy, "on_event", None)):
         raise ValueError("strategy factory must return an object with callable on_event")
+    exporter = getattr(strategy, "export_state", None)
+    importer = getattr(strategy, "import_state", None)
+    checkpoint_supported = callable(exporter) and callable(importer)
+    if require_checkpoint and not checkpoint_supported:
+        raise ValueError(
+            "incremental execution requires export_state and import_state"
+        )
+    if state is not None:
+        if not checkpoint_supported:
+            raise ValueError("strategy checkpoint cannot be restored")
+        normalized_state = canonical_value(state, allow_float=True)
+        with block_forbidden_imports():
+            importer(normalized_state)
     return strategy
