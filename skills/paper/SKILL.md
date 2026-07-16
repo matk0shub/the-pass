@@ -53,6 +53,9 @@ Use this skill only after an exact package has a recorded passed `research_gate`
 - Use the same decision code and config hash as accepted research, or document every difference
   before observation starts.
 - Run only the isolated virtual paper process. No credentials or network clients enter the worker.
+- For custom strategies, prefer JSON-only strategy checkpoints so each invocation processes only
+  the new immutable batch; schedule periodic clean cumulative replay and freeze on parity mismatch.
+- Keep strategies without checkpoint support in explicit cumulative compatibility mode.
 - Record decisions, simulated intents, fills, missed fills, costs, latency, outages, and risk events.
 - Freeze on stale data, clock skew, outage, or risk breach.
 - Return `waiting` while a valid minimum window is incomplete. Do not compress elapsed time or

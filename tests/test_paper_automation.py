@@ -255,6 +255,11 @@ class ReportingAndIncidentTests(unittest.TestCase):
                 self.assertNotIn("<form", content)
                 self.assertNotIn("<input", content)
                 self.assertNotIn("fetch(", content)
+            robustness = (output / "robustness.html").read_text(encoding="utf-8")
+            self.assertIn("Effective observations", robustness)
+            self.assertIn("purged_walk_forward", robustness)
+            waterfall = (output / "cost_waterfall.html").read_text(encoding="utf-8")
+            self.assertIn("Impact", waterfall)
 
     def test_incident_artifact_is_fail_closed_and_valid(self) -> None:
         document = build_incident_report(

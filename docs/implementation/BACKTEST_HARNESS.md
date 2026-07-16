@@ -25,11 +25,12 @@ The generic package copies and cross-validates the supplied StrategySpec, DataMa
 QualityReport. It never replaces them with synthetic claims. A generic run always starts with a
 `blocked` verdict and still requires robustness, risk, and independent review.
 
-`robustness_report.v2` is authoritative promotion evidence. It stores the registered variants,
-source-package binding, event/descriptor/execution fingerprints, complete fold matrix, failed cells,
-purge/embargo policy, null baseline, mandatory stresses, and parameter stability. Validation
-recomputes PBO, PSR, DSR, and Reality Check/SPA. Summary values in `metrics_report` must exactly
-match this report.
+`robustness_report.v3` is authoritative promotion evidence. It stores the preregistered variants,
+source-package binding, event/descriptor/execution fingerprints, every train and test cell, failed
+cells, deterministic train-only winner selection, stitched OOS returns, purge/embargo policy, null
+baseline, mandatory stresses, and neighboring-parameter stability. Validation recomputes the fold
+selections, effective sample size, PBO, PSR, DSR, Reality Check/SPA, null comparison, and report
+fingerprint. Historical v2 reports remain readable but cannot create a new paper candidate.
 
 After independent findings, `the-pass candidate assemble` creates the successor package and derives
 the metrics/verdict references. Agents and users should never hand-edit a recorded run into
@@ -37,10 +38,14 @@ the metrics/verdict references. Agents and users should never hand-edit a record
 
 ## Fill Evidence
 
-- Market intents consume opposing book depth and record unfilled remainder.
+- Market intents consume opposing book depth only after minimum latency, respect participation
+  limits, and record unfilled remainder.
 - Limit intents require a later trade or book event; queue and adverse-selection haircuts
-  are explicit.
+  are applied after participation limits.
 - Bar intents fill only at a later bar open with adverse slippage.
+- Dynamic event-level fees and market impact are recorded separately from spread and slippage.
+- Futures multiplier PnL, signed funding, borrow, roll, and settlement are explicit lifecycle
+  accounting events.
 - Midpoint fills are diagnostic and have `promotion_eligible = false`.
 - Every fill is bound to the intent instrument and rejects invalid price, size, fee, or cost values.
 
@@ -65,3 +70,7 @@ uv run --extra data --extra research python scripts/validate_b2_harness.py
 The generated packages are under `examples/b2-baselines/`. Search spaces are written
 before simulation. A non-empty output directory or changed preregistration is rejected.
 The executable custom path is documented under `examples/custom-strategy/`.
+
+Custom workers receive canonical JSONL file references with count and fingerprint rather than an
+inline copy of the event history. Execution remains deterministic while parent-process memory no
+longer duplicates the serialized dataset.

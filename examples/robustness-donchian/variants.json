@@ -1,0 +1,18 @@
+[
+  {
+    "disabled": false,
+    "lookback": 5
+  },
+  {
+    "disabled": false,
+    "lookback": 10
+  },
+  {
+    "disabled": false,
+    "lookback": 20
+  },
+  {
+    "disabled": true,
+    "lookback": 10
+  }
+]

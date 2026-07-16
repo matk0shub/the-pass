@@ -626,6 +626,9 @@ def build_parser() -> argparse.ArgumentParser:
     paper_observe.add_argument("--max-clock-skew-ns", type=int, required=True)
     paper_observe.add_argument("--max-outage-gap-ns", type=int, required=True)
     paper_observe.add_argument("--timeout-seconds", type=float, default=60.0)
+    paper_observe.add_argument(
+        "--full-replay-interval-batches", type=int, default=10
+    )
     paper_observe.add_argument("--format", choices=("text", "json"), default="text")
 
     automation_parser = subparsers.add_parser(
@@ -1317,7 +1320,6 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 ):
                     raise ValueError("backtest inputs must be JSON or YAML objects")
-                events = load_event_jsonl(args.events)
                 search_space = {
                     "schema_version": 1,
                     "registered_at": str(data_manifest["created_at"]),
@@ -1328,7 +1330,7 @@ def main(argv: list[str] | None = None) -> int:
                 }
                 preregister_search_space(args.output, search_space)
                 worker_result = run_strategy_verified(
-                    events,
+                    args.events,
                     descriptor=descriptor,
                     execution=execution,
                     workspace_root=args.workspace_root,
@@ -1339,6 +1341,7 @@ def main(argv: list[str] | None = None) -> int:
                     sandbox_policy=args.sandbox_policy,
                 )
                 result = runner_result_from_document(worker_result)
+                events = load_event_jsonl(args.events)
                 evidence_fields = {
                     "schema_version",
                     "status",
@@ -1679,6 +1682,7 @@ def main(argv: list[str] | None = None) -> int:
                     observation_dir=args.observation_dir,
                     workspace_root=args.workspace_root,
                     timeout_seconds=args.timeout_seconds,
+                    full_replay_interval_batches=args.full_replay_interval_batches,
                 )
                 frozen = result["status"] == "frozen"
                 print_envelope(

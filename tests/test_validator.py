@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import hashlib
 import json
+import math
 import os
 import shutil
 import tempfile
@@ -41,7 +42,8 @@ from the_pass.gates import GateEvaluationError, evaluate_gate, write_gate_decisi
 from the_pass.robustness import (
     cscv_pbo,
     deflated_sharpe_ratio,
-    probabilistic_sharpe_ratio,
+    effective_sample_size,
+    probabilistic_sharpe_ratio_effective,
     reality_check,
 )
 from the_pass.validator import default_schema_dir, validate_artifact, validate_package
@@ -62,25 +64,33 @@ ATTESTATION_TEST_PRIVATE, ATTESTATION_TEST_PUBLIC = generate_reviewer_keypair()
 
 
 def add_robustness_report(package: Path) -> None:
-    matrix = [
-        [0.01, 0.02, -0.01],
-        [0.02, 0.03, -0.01],
-        [0.01, 0.02, -0.005],
-        [0.02, 0.025, -0.01],
-    ]
+    train_returns = (
+        [0.0005, 0.0015, 0.0005, 0.0015, 0.0005],
+        [0.002, 0.004, 0.002, 0.004, 0.002],
+        [-0.002, 0, -0.002, 0, -0.002],
+    )
+    test_returns = (
+        [0.0005, 0.0015] * 5,
+        [0.001, 0.003] * 5,
+        [-0.002, 0] * 5,
+    )
     selected_index = 1
     null_index = 2
-    selected = [row[selected_index] for row in matrix]
+    selected = list(test_returns[selected_index]) * 4
+    oos_matrix = [
+        [test_returns[column][row % 10] for column in range(3)]
+        for row in range(40)
+    ]
     trial_sharpes = []
-    for column in range(len(matrix[0])):
-        values = [row[column] for row in matrix]
+    for column in range(3):
+        values = [row[column] for row in oos_matrix]
         average = sum(values) / len(values)
         variance = sum((value - average) ** 2 for value in values) / (
             len(values) - 1
         )
         trial_sharpes.append(average / variance**0.5 if variance else 0.0)
     registration = {
-        "schema_version": 2,
+        "schema_version": 3,
         "descriptor_fingerprint": "1" * 64,
         "strategy_source_sha256": "2" * 64,
         "execution_fingerprint": "3" * 64,
@@ -90,8 +100,11 @@ def add_robustness_report(package: Path) -> None:
             {"lookback": 10},
             {"role": "null"},
         ],
-        "selected_index": selected_index,
-        "selection_policy": "fixture selection registered before execution",
+        "reference_variant_index": selected_index,
+        "null_variant_index": null_index,
+        "selection_metric": "net_return",
+        "tie_break": "lowest_variant_index",
+        "selection_policy": "select each fold only from complete train-cell net returns",
     }
     registration["registration_fingerprint"] = stable_fingerprint(registration)
     mandatory_stress = (
@@ -107,43 +120,79 @@ def add_robustness_report(package: Path) -> None:
         "correlated_gap",
         "forced_deleverage",
     )
+    cells = []
+    fold_results = []
+    for fold in range(4):
+        for phase, periodic_by_variant in (
+            ("train", train_returns),
+            ("test", test_returns),
+        ):
+            for variant, periodic in enumerate(periodic_by_variant):
+                cells.append(
+                    {
+                        "fold_id": fold,
+                        "phase": phase,
+                        "variant_index": variant,
+                        "status": "complete",
+                        "net_return": math.prod(
+                            1 + value for value in periodic
+                        )
+                        - 1,
+                        "periodic_returns": list(periodic),
+                        "result_fingerprint": hashlib.sha256(
+                            f"{fold}:{phase}:{variant}".encode()
+                        ).hexdigest(),
+                        "runtime_promotion_eligible": True,
+                        "execution_schema_version": 2,
+                    }
+                )
+        fold_results.append(
+            {
+                "fold_id": fold,
+                "selected_variant_index": selected_index,
+                "selected_train_score": math.prod(
+                    1 + value for value in train_returns[selected_index]
+                )
+                - 1,
+                "selected_test_return": math.prod(
+                    1 + value for value in test_returns[selected_index]
+                )
+                - 1,
+            }
+        )
+    sample = effective_sample_size(selected)
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": "fixture-robustness",
         "created_at": "2026-01-31T00:00:00Z",
         "source_package_id": "pkg_" + "a" * 24,
         "registration": registration,
-        "matrix": matrix,
-        "cells": [
-            {
-                "fold_id": fold,
-                "variant_index": variant,
-                "status": "complete",
-                "net_return": matrix[fold][variant],
-                "result_fingerprint": hashlib.sha256(
-                    f"{fold}:{variant}".encode()
-                ).hexdigest(),
-                "runtime_promotion_eligible": True,
-            }
-            for fold in range(len(matrix))
-            for variant in range(len(matrix[0]))
-        ],
+        "cells": cells,
+        "fold_results": fold_results,
         "failed_cells": 0,
+        "oos_matrix": oos_matrix,
+        "selected_oos_returns": selected,
+        "sample": sample,
         "statistics": {
-            "pbo": cscv_pbo(matrix, blocks=4),
-            "psr": probabilistic_sharpe_ratio(selected),
+            "pbo": cscv_pbo(oos_matrix, blocks=8),
+            "psr": probabilistic_sharpe_ratio_effective(
+                selected,
+                effective_observations=sample["effective_observations"],
+            ),
             "dsr": deflated_sharpe_ratio(
-                selected, trial_sharpes=trial_sharpes
+                selected,
+                trial_sharpes=trial_sharpes,
+                effective_observations=sample["effective_observations"],
             ),
             "reality_check": reality_check(
-                matrix, bootstrap_samples=500, seed=7
+                oos_matrix, bootstrap_samples=500, seed=7
             ),
         },
         "validation": {
             "mode": "purged_walk_forward",
             "purge_observations": 1,
             "embargo_observations": 1,
-            "cscv_blocks": 4,
+            "cscv_blocks": 8,
             "holdout_start_time": "2026-01-21T00:00:00Z",
             "holdout_end_time": "2026-01-31T00:00:00Z",
             "folds": [
@@ -162,10 +211,8 @@ def add_robustness_report(package: Path) -> None:
         "null_baseline": {
             "variant_index": null_index,
             "status": "pass",
-            "selected_mean_return": sum(selected) / len(selected),
-            "baseline_mean_return": (
-                sum(row[null_index] for row in matrix) / len(matrix)
-            ),
+            "selected_mean_return": 0.002,
+            "baseline_mean_return": -0.001,
             "summary": "candidate exceeded the preregistered null baseline",
         },
         "stress_results": [
@@ -180,9 +227,10 @@ def add_robustness_report(package: Path) -> None:
         "parameter_stability": {
             "status": "pass",
             "neighbor_indices": [0],
-            "worst_neighbor_return": (
-                sum(row[0] for row in matrix) / len(matrix)
-            ),
+            "worst_neighbor_return": math.prod(
+                1 + value for value in test_returns[0]
+            )
+            - 1,
             "summary": "registered neighboring parameters remained net positive",
         },
         "status": "complete",
@@ -582,6 +630,7 @@ def prepare_paper_candidate(
             "fees": 0.1,
             "spread": 0.2,
             "slippage": 0.2,
+            "impact": 0,
             "funding": 0,
             "borrow": 0,
             "roll": 0,
@@ -1492,6 +1541,77 @@ safety:
                     findings_path=findings_path,
                 )
             self.assertFalse(tampered_target.exists())
+
+    def test_robustness_v3_rejects_train_selection_and_oos_mutations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            path = root / "robustness_report.json"
+            original = json.loads(path.read_text(encoding="utf-8"))
+
+            changed_train = json.loads(json.dumps(original))
+            train_cell = next(
+                cell
+                for cell in changed_train["cells"]
+                if cell["fold_id"] == 0
+                and cell["phase"] == "train"
+                and cell["variant_index"] == 0
+            )
+            train_cell["periodic_returns"] = [0.1]
+            train_cell["net_return"] = 0.1
+            changed_train["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in changed_train.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(changed_train), encoding="utf-8")
+            train_result = validate_artifact(
+                path, artifact_type="robustness_report"
+            )
+            self.assertFalse(train_result.ok)
+            self.assertTrue(
+                any(
+                    "train-cell selection" in issue.message
+                    for issue in train_result.issues
+                )
+            )
+
+            changed_oos = json.loads(json.dumps(original))
+            test_cell = next(
+                cell
+                for cell in changed_oos["cells"]
+                if cell["fold_id"] == 0
+                and cell["phase"] == "test"
+                and cell["variant_index"] == 1
+            )
+            test_cell["periodic_returns"][0] = 0.1
+            test_cell["net_return"] = (
+                math.prod(
+                    1 + value for value in test_cell["periodic_returns"]
+                )
+                - 1
+            )
+            changed_oos["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in changed_oos.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(changed_oos), encoding="utf-8")
+            oos_result = validate_artifact(
+                path, artifact_type="robustness_report"
+            )
+            self.assertFalse(oos_result.ok)
+            self.assertTrue(
+                any(
+                    "OOS" in issue.message
+                    or "aligned OOS" in issue.message
+                    for issue in oos_result.issues
+                )
+            )
 
     def test_paper_candidate_rejects_self_review(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

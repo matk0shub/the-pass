@@ -118,10 +118,12 @@ the-pass paper observe --descriptor <json> --batch-id <id> ...
 `data ingest` publishes only through an atomic `COMMITTED` bundle and refuses existing output.
 Public network providers require `--network`; futures requires a local archive. `backtest run`
 cross-validates the StrategySpec, manifest, quality report, canonical event fingerprint, descriptor,
-and execution config. The quality report must bind the exact event fingerprint and row count. It
-executes two fresh credential-free workers and packages only identical
-results. Exit `0` means the diagnostic operation completed, not that its blocked verdict passed a
-gate.
+and execution config. Execution schema v2 adds minimum latency, participation limits, explicit
+impact, and deterministic equity sampling. The quality report must bind the exact event fingerprint
+and row count. The command executes two fresh credential-free workers and packages only identical
+results. Workers receive canonical JSONL by file reference plus count and fingerprint; request v1
+with inline events remains readable only for compatibility. Exit `0` means the diagnostic
+operation completed, not that its blocked verdict passed a gate.
 
 `trusted_local` is the portable default. It reports process separation, credential stripping, and
 import filtering, while explicitly reporting no OS network/filesystem enforcement and no runtime
@@ -152,18 +154,22 @@ revoked, or unverifiable trust evidence produces a valid blocked result. Legacy 
 remain readable but can never authorize a new pass; `live_gate` remains forbidden.
 
 `robustness sweep` create-only writes `<output-stem>.registration.json` before its first worker
-call. Promotion-capable v2 reports require purged walk-forward folds, a preregistered null variant,
-all mandatory stress scenarios, neighboring-parameter stability, and promotion-eligible hardened
-runtime cells. Artifact validation recomputes all statistics from the stored matrix.
+call. Promotion-capable v3 reports execute all variants on train and test slices, select each fold
+only from train evidence, and require purged walk-forward folds, a preregistered null variant, at
+least 30 effective OOS observations, all mandatory stresses, neighboring-parameter stability, and
+promotion-eligible hardened runtime cells. Artifact validation recomputes the selections and all
+statistics from stored OOS periodic returns.
 `candidate assemble` is the only supported automatic conversion from a recorded diagnostic run to
 a research candidate: it creates a ledger-linked successor, copies exact robustness/findings
 evidence, derives summary fields, and validates the final package before returning it.
 `receipts add`, `workflow supersede`, and `candidate assemble` all accept
 `--trusted-reviewers` so a ledger containing passed decisions can be replayed under the same trust
 anchor before another append or successor operation.
-`paper observe` stores immutable batches, verifies cumulative replay prefixes and configuration
-continuity, and returns exit `2` on a sticky freeze. A worker failure after batch commit freezes and
-tracks that batch instead of leaving orphan evidence. Neither command may write a gate decision.
+`paper observe` stores immutable batches, verifies the cumulative event chain and configuration
+continuity, and returns exit `2` on a sticky freeze. Checkpoint-capable strategies process new
+batches incrementally and periodically compare against clean full replay; compatibility strategies
+retain cumulative replay. A worker failure after batch commit freezes and tracks that batch instead
+of leaving orphan evidence. Neither command may write a gate decision.
 
 ## Agent Delegation Authority
 

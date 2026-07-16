@@ -1,0 +1,12 @@
+{
+  "asset_class": "crypto_spot",
+  "config": {
+    "disabled": false,
+    "lookback": 10
+  },
+  "factory": "build_strategy",
+  "owner": "strategy_implementer",
+  "schema_version": 1,
+  "strategy_file": "strategy.py",
+  "strategy_id": "robustness_donchian_fixture_v1"
+}

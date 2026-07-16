@@ -65,8 +65,9 @@ evidence. It replaces `taste` and routes checks by the actual target gate.
   multiple testing, parameter sensitivity, reproducibility, fills, costs, accounting, stress, and
   strategy-independent risk.
 - Run robustness and risk CLI operations when their structured inputs exist.
-- Require `robustness_report.v2` and verify that production validation recomputes it successfully;
-  text-only DSR/PBO, stress, baseline, or stability claims are blockers.
+- Require `robustness_report.v3` for new paper candidates and verify that production validation
+  recomputes train-only fold selection, OOS statistics, null comparison, stress, and stability;
+  historical v2 evidence is readable but cannot promote a new candidate.
 - A pass requires `verdict_report.verdict: paper_candidate`, independent findings with no blocker,
   and exact package evidence.
 

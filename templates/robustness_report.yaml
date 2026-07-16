@@ -1,41 +1,55 @@
-schema_version: 2
-id: example-diagnostic-robustness
+schema_version: 3
+id: example-blocked-train-select-test
 created_at: "2026-07-16T00:00:00Z"
 source_package_id: null
 registration:
-  schema_version: 2
+  schema_version: 3
   descriptor_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
   strategy_source_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
   execution_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
   events_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
-  variants: [{lookback: 10}, {lookback: 20}]
-  selected_index: 0
-  selection_policy: Example selection was registered before execution.
-  registration_fingerprint: "3121be1cb55d156e96ed5697c1e75a1a85665cac8a7b68fc7cabb4000ae404ce"
-matrix:
-  - [0.01, 0.00]
-  - [0.02, 0.01]
-  - [-0.01, -0.02]
-  - [0.01, 0.00]
+  variants: [{lookback: 10}, {role: null}]
+  reference_variant_index: 0
+  null_variant_index: 1
+  selection_metric: net_return
+  tie_break: lowest_variant_index
+  selection_policy: Select each fold only from complete train-cell net returns.
+  registration_fingerprint: "b70cb058fd81860d2414e22b99cf7248cc6cdefd0e0710d6975a118b182eb84a"
+status: blocked
 cells:
-  - {fold_id: 0, variant_index: 0, status: complete, net_return: 0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-  - {fold_id: 0, variant_index: 1, status: complete, net_return: 0.00, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-  - {fold_id: 1, variant_index: 0, status: complete, net_return: 0.02, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-  - {fold_id: 1, variant_index: 1, status: complete, net_return: 0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-  - {fold_id: 2, variant_index: 0, status: complete, net_return: -0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-  - {fold_id: 2, variant_index: 1, status: complete, net_return: -0.02, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-  - {fold_id: 3, variant_index: 0, status: complete, net_return: 0.01, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-  - {fold_id: 3, variant_index: 1, status: complete, net_return: 0.00, result_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000", runtime_promotion_eligible: false}
-failed_cells: 0
+  - {fold_id: 0, phase: train, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 0, phase: train, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 0, phase: test, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 0, phase: test, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 1, phase: train, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 1, phase: train, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 1, phase: test, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 1, phase: test, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 2, phase: train, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 2, phase: train, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 2, phase: test, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 2, phase: test, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 3, phase: train, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 3, phase: train, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 3, phase: test, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+  - {fold_id: 3, phase: test, variant_index: 1, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
+fold_results:
+  - {fold_id: 0, selected_variant_index: null, selected_train_score: null, selected_test_return: null}
+  - {fold_id: 1, selected_variant_index: null, selected_train_score: null, selected_test_return: null}
+  - {fold_id: 2, selected_variant_index: null, selected_train_score: null, selected_test_return: null}
+  - {fold_id: 3, selected_variant_index: null, selected_train_score: null, selected_test_return: null}
+failed_cells: 17
+oos_matrix: []
+selected_oos_returns: []
+sample:
+  observations: 0
+  lag1_autocorrelation: 0
+  effective_observations: 0
 statistics:
-  pbo:
-    pbo: 0.0
-    combinations: 6
-    logits: [0.6931471805599452, 0.6931471805599452, 0.6931471805599452, 0.6931471805599452, 0.6931471805599452, 0.6931471805599452]
-    selected_variants: [0, 0, 0, 0, 0, 0]
-  psr: 0.7646347804085416
-  dsr: 0.6435025320517186
-  reality_check: {reality_check_pvalue: 0.12974051896207583, spa_pvalue: 0.12974051896207583}
+  pbo: {pbo: 1.0, combinations: 1, logits: [], selected_variants: []}
+  psr: 0.0
+  dsr: 0.0
+  reality_check: {reality_check_pvalue: 1.0, spa_pvalue: 1.0}
 validation:
   mode: diagnostic_splits
   purge_observations: 0
@@ -44,22 +58,21 @@ validation:
   holdout_start_time: "2026-01-01T00:00:00Z"
   holdout_end_time: "2026-01-02T00:00:00Z"
   folds:
-    - {id: 0, train_start: 0, train_end: 1, test_start: 1, test_end: 2, purged: [], embargoed: []}
-    - {id: 1, train_start: 0, train_end: 2, test_start: 2, test_end: 3, purged: [], embargoed: []}
-    - {id: 2, train_start: 0, train_end: 3, test_start: 3, test_end: 4, purged: [], embargoed: []}
-    - {id: 3, train_start: 0, train_end: 4, test_start: 4, test_end: 5, purged: [], embargoed: []}
+    - {id: 0, train_start: 0, train_end: 2, test_start: 2, test_end: 3, purged: [], embargoed: []}
+    - {id: 1, train_start: 0, train_end: 3, test_start: 3, test_end: 4, purged: [], embargoed: []}
+    - {id: 2, train_start: 0, train_end: 4, test_start: 4, test_end: 5, purged: [], embargoed: []}
+    - {id: 3, train_start: 0, train_end: 5, test_start: 5, test_end: 6, purged: [], embargoed: []}
 null_baseline:
   variant_index: 1
-  status: pass
-  selected_mean_return: 0.0075
-  baseline_mean_return: -0.0025
-  summary: Example selected variant exceeds the example null variant.
+  status: blocked
+  selected_mean_return: 0.0
+  baseline_mean_return: 0.0
+  summary: No train or OOS evidence has been measured.
 stress_results: []
 parameter_stability:
   status: blocked
   neighbor_indices: []
   worst_neighbor_return: null
-  summary: Diagnostic example has no independent neighboring variant.
-status: complete
+  summary: No selected configuration has measured OOS neighbors.
 promotion_eligible: false
-report_fingerprint: "f9c788e44622a29b6071ed530e86767d314b77647e16bb5883ad482734d5688e"
+report_fingerprint: "480ba4f0d6cc160b37e1251ecd39325cb51a0d4b16ffbe2ecd501a75f5d0b1cf"

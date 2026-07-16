@@ -72,6 +72,10 @@ def assemble_research_candidate(
     robustness = _document(
         robustness_report_path.resolve(), artifact_type="robustness_report"
     )
+    if robustness.get("schema_version") != 3:
+        raise CandidateAssemblyError(
+            "new research candidates require robustness_report schema_version 3"
+        )
     findings = _document(findings_path.resolve(), artifact_type="findings")
     if robustness.get("source_package_id") != source_entry["package_id"]:
         raise CandidateAssemblyError(

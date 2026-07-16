@@ -1,0 +1,11 @@
+{
+  "equity_sampling_interval": 1,
+  "fee_rate": "0.001",
+  "fill_model": "bar_next_open",
+  "impact_bps": "1",
+  "initial_cash": "10000",
+  "minimum_latency_ns": 1000000,
+  "participation_rate": "0.25",
+  "schema_version": 2,
+  "slippage_bps": "5"
+}

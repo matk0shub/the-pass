@@ -56,9 +56,58 @@ def _array(values: Sequence[float]) -> Any:
 
 
 def probabilistic_sharpe_ratio(returns: Sequence[float], *, benchmark_sharpe: float = 0.0) -> float:
+    return probabilistic_sharpe_ratio_effective(
+        returns,
+        benchmark_sharpe=benchmark_sharpe,
+        effective_observations=None,
+    )
+
+
+def lag1_autocorrelation(values: Sequence[float]) -> float:
+    sample = _array(values)
+    if len(sample) < 3:
+        return 0.0
+    left = sample[:-1]
+    right = sample[1:]
+    left_std = float(left.std(ddof=1))
+    right_std = float(right.std(ddof=1))
+    if left_std == 0 or right_std == 0:
+        return 0.0
+    correlation = float(((left - left.mean()) * (right - right.mean())).sum())
+    correlation /= (len(left) - 1) * left_std * right_std
+    return min(0.99, max(-0.99, correlation))
+
+
+def effective_sample_size(values: Sequence[float]) -> dict[str, float]:
+    sample = _array(values)
+    correlation = lag1_autocorrelation(sample)
+    effective = len(sample) * (1 - correlation) / (1 + correlation)
+    effective = min(float(len(sample)), max(2.0, float(effective)))
+    return {
+        "observations": float(len(sample)),
+        "lag1_autocorrelation": correlation,
+        "effective_observations": effective,
+    }
+
+
+def probabilistic_sharpe_ratio_effective(
+    returns: Sequence[float],
+    *,
+    benchmark_sharpe: float = 0.0,
+    effective_observations: float | None,
+) -> float:
     from scipy.stats import kurtosis, norm, skew
 
     sample = _array(returns)
+    observations = (
+        float(len(sample))
+        if effective_observations is None
+        else float(effective_observations)
+    )
+    if not math.isfinite(observations) or observations < 2 or observations > len(sample):
+        raise ValueError(
+            "effective_observations must be finite and between two and sample size"
+        )
     volatility = float(sample.std(ddof=1))
     if volatility == 0:
         return 1.0 if float(sample.mean()) > benchmark_sharpe else 0.0
@@ -68,7 +117,7 @@ def probabilistic_sharpe_ratio(returns: Sequence[float], *, benchmark_sharpe: fl
     variance = 1 - sample_skew * sharpe + ((sample_kurtosis - 1) / 4) * sharpe**2
     if variance <= 0 or not math.isfinite(variance):
         raise ValueError("PSR denominator is not finite and positive")
-    score = (sharpe - benchmark_sharpe) * math.sqrt(len(sample) - 1) / math.sqrt(variance)
+    score = (sharpe - benchmark_sharpe) * math.sqrt(observations - 1) / math.sqrt(variance)
     return min(1.0, max(0.0, float(norm.cdf(score))))
 
 
@@ -76,6 +125,7 @@ def deflated_sharpe_ratio(
     returns: Sequence[float],
     *,
     trial_sharpes: Sequence[float],
+    effective_observations: float | None = None,
 ) -> float:
     from scipy.stats import norm
 
@@ -89,7 +139,30 @@ def deflated_sharpe_ratio(
         (1 - euler_gamma) * float(norm.ppf(1 - 1 / count))
         + euler_gamma * float(norm.ppf(1 - 1 / (count * math.e)))
     )
-    return probabilistic_sharpe_ratio(returns, benchmark_sharpe=expected_max)
+    return probabilistic_sharpe_ratio_effective(
+        returns,
+        benchmark_sharpe=expected_max,
+        effective_observations=effective_observations,
+    )
+
+
+def select_train_winner(
+    scores: Sequence[float],
+    *,
+    excluded_indices: Sequence[int] = (),
+) -> int:
+    if not scores or any(not math.isfinite(float(value)) for value in scores):
+        raise ValueError("train scores must be a non-empty finite sequence")
+    excluded = set(excluded_indices)
+    eligible = [
+        (float(score), index)
+        for index, score in enumerate(scores)
+        if index not in excluded
+    ]
+    if not eligible:
+        raise ValueError("train selection has no eligible variants")
+    best = max(score for score, _index in eligible)
+    return min(index for score, index in eligible if score == best)
 
 
 def cscv_pbo(performance: Sequence[Sequence[float]], *, blocks: int = 8) -> dict[str, Any]:

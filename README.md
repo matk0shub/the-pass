@@ -61,7 +61,7 @@ Codex or Claude Code plugin provides the guided `/the-pass:*` commands.
 
 ```bash
 uv tool install \
-  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.14.0/the_pass-0.14.0-py3-none-any.whl"
+  "the-pass[data,research,paper] @ https://github.com/mightymattys/the-pass/releases/download/v0.15.0/the_pass-0.15.0-py3-none-any.whl"
 uv tool update-shell
 the-pass --version
 ```
@@ -74,7 +74,7 @@ smoke test. The public package contains no live trading client.
 Codex:
 
 ```bash
-codex plugin marketplace add mightymattys/the-pass --ref v0.14.0
+codex plugin marketplace add mightymattys/the-pass --ref v0.15.0
 codex plugin add the-pass@the-pass-tools
 ```
 
@@ -152,11 +152,12 @@ signs it.
 
 The framework is operational. In addition to bundled controls, the source tree supports trusted
 local strategy files, immutable adapter ingest bundles, deterministic double-run backtests,
-strategy-driven robustness sweeps, and resumable replay-based paper observations. Candidate
-promotion remains deliberately separate.
+train-select-test robustness sweeps, streaming JSONL replay, execution lifecycle accounting, and
+checkpointed paper observations. Candidate promotion remains deliberately separate.
 
-The source tree and plugin manifests are versioned `0.14.0`. The
+The source tree and plugin manifests are versioned `0.15.0`. The
 release badge above remains the authority for the latest published tag. Readiness is recorded in the
+[`v0.15.0` release audit](reports/RELEASE_AUDIT_0.15.0.md), the
 [`v0.14.0` release audit](reports/RELEASE_AUDIT_0.14.0.md), the
 [`v0.13.0` release audit](reports/RELEASE_AUDIT_0.13.0.md), the
 [`v0.13.0` post-release verification](reports/POST_RELEASE_AUDIT_0.13.0.md), the
@@ -370,11 +371,12 @@ Read the [Adapter Contract](docs/adapter-contract.md) and
 
 ## Execution, Statistics, and Risk
 
-The reference simulator is intentionally small and auditable. It models order lifecycle,
-partial fills, depth, fees, slippage, missed fills, and portfolio conservation. Funding, borrow,
-and roll are explicit accounting components but remain zero unless a strategy workflow supplies
-and reconciles those events; the engine does not invent them. Mid-price fills are diagnostic-only
-and cannot support promotion.
+The reference simulator is intentionally small and auditable. Execution config v2 models minimum
+latency, participation limits, market impact, dynamic event-level fees, partial fills, queue and
+adverse-selection haircuts, and missed fills. Instrument definitions register type and contract
+multiplier; futures PnL, funding, borrow, roll, and settlement are explicit lifecycle cashflows.
+The engine does not invent missing events. Mid-price fills are diagnostic-only and cannot support
+promotion.
 
 Custom strategy code runs in `trusted_local` mode by default. That mode strips credentials and
 contains process failures but truthfully reports that network and host-filesystem access are not
@@ -388,22 +390,24 @@ median observation interval, and periods per year instead of assuming every mark
 points per year. Missing prices, malformed fills, conflicting event identities, and stale/future
 paper observations fail closed.
 
-The robustness layer includes walk-forward evaluation, purged splits and embargoes, PBO,
-PSR/DSR, deterministic bootstrap, Reality Check/SPA support, parameter sensitivity, regime
-splits, and execution stress. A promotion candidate must include `robustness_report.v2`; validation
-recomputes its statistics from the registered matrix and derives baseline, stress, stability, and
-runtime eligibility instead of trusting copied summaries. Risk limits are strategy-independent;
-a strategy cannot rewrite its own policy.
+The robustness layer executes every registered variant on both train and untouched test data.
+Each fold selects its winner only from train evidence, then stitches the selected OOS periodic
+returns. `robustness_report.v3` records all cells and lets validation recompute effective sample
+size, PBO, PSR/DSR, Reality Check/SPA, aligned null comparison, neighboring-parameter stability,
+stress, and runtime eligibility. Historical v2 reports remain readable but cannot create a new
+paper candidate. Risk limits are strategy-independent; a strategy cannot rewrite its own policy.
 
 See [Backtest Harness](docs/implementation/BACKTEST_HARNESS.md) and
 [Robustness, Risk, and Audit](docs/implementation/ROBUSTNESS_RISK_AUDIT.md).
 
 ## Paper, Automation, and Reports
 
-Paper observation runs in a separate process with no live trading client. `paper observe` stores
-immutable batches, replays the cumulative event set, verifies the historical intent/fill prefix,
-and freezes on stale data, clock skew, outages, risk breaches, config drift, overlap, or tampering.
-Offline event timestamps never prove that a real paper window elapsed.
+Paper observation runs in a separate process with no live trading client. Checkpoint-capable
+strategies process only each new immutable batch and periodically prove parity against a clean
+cumulative replay. Compatibility strategies remain on deterministic cumulative replay and are
+marked accordingly. The observer verifies the event hash chain and freezes on parity divergence,
+stale data, clock skew, outages, risk breaches, config drift, overlap, or tampering. Offline event
+timestamps never prove that a real paper window elapsed.
 
 Automation is exposed as idempotent CLI jobs for cron, GitHub Actions, or an external
 orchestrator. Named jobs execute domain-specific evidence checks; missing domain inputs cannot
@@ -476,6 +480,7 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [Main research plan](docs/research/the-pass-plan.md)
 - [Usable strategy runtime plan](docs/implementation/USABLE_STRATEGY_RUNTIME_PLAN.md)
 - [Trading roadmap execution plan](docs/implementation/TRADING_ROADMAP_EXECUTION_PLAN.md)
+- [`v0.15.0` scientific engine upgrade](docs/implementation/SCIENTIFIC_ENGINE_UPGRADE_V0.15.md)
 - [`v0.14.0` evidence and trust hardening](docs/implementation/EVIDENCE_TRUST_HARDENING_V0.14.md)
 - [`v0.13.0` trust-boundary hardening plan](docs/implementation/TRUST_BOUNDARY_HARDENING_PLAN.md)
 - [Artifact lifecycle](docs/implementation/ARTIFACT_LIFECYCLE.md)
@@ -506,6 +511,8 @@ Report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - [`v0.13.0` post-release verification](reports/POST_RELEASE_AUDIT_0.13.0.md)
 - [`v0.14.0` release notes](docs/public/RELEASE_NOTES_v0.14.0.md)
 - [`v0.14.0` release audit](reports/RELEASE_AUDIT_0.14.0.md)
+- [`v0.15.0` release notes](docs/public/RELEASE_NOTES_v0.15.0.md)
+- [`v0.15.0` release audit](reports/RELEASE_AUDIT_0.15.0.md)
 - [Supervised workflow implementation audit](reports/SUPERVISED_WORKFLOW_AUDIT_2026-07-11.md)
 - [Repository hardening audit](reports/REPOSITORY_HARDENING_AUDIT_2026-07-10.md)
 - [CLI contract](docs/public/CLI_CONTRACT.md)

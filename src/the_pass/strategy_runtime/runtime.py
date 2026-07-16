@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import signal
 import socket
 import stat
@@ -15,7 +16,11 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping
 
-from the_pass.data.contracts import CanonicalEvent, stable_fingerprint
+from the_pass.data.contracts import (
+    CanonicalEvent,
+    canonical_json_bytes,
+    stable_fingerprint,
+)
 from the_pass.engine.contracts import Fill, RunnerResult, SimulatedIntent
 
 from .config import (
@@ -46,6 +51,32 @@ class StrategyRuntimeError(RuntimeError):
     def __init__(self, message: str, *, metadata: Mapping[str, Any] = None) -> None:
         super().__init__(message)
         self.metadata = dict(metadata or {})
+
+
+def _event_file_metadata(path: Path) -> tuple[int, str]:
+    digest = hashlib.sha256()
+    digest.update(b"[")
+    count = 0
+    previous_key = None
+    with path.open("r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            if not raw_line.strip():
+                continue
+            event = CanonicalEvent.from_dict(json.loads(raw_line))
+            key = event.sort_key()
+            if previous_key is not None and key < previous_key:
+                raise ValueError(
+                    "canonical event file must be deterministically ordered"
+                )
+            previous_key = key
+            if count:
+                digest.update(b",")
+            digest.update(canonical_json_bytes(event.as_dict()))
+            count += 1
+    digest.update(b"]")
+    if count == 0:
+        raise ValueError("canonical event file must not be empty")
+    return count, digest.hexdigest()
 
 
 def _descriptor(value: DescriptorInput, workspace_root: PathLike) -> StrategyDescriptor:
@@ -268,7 +299,7 @@ def _run_sandbox_probe(
 
 
 def run_strategy(
-    events: Iterable[CanonicalEvent],
+    events: Iterable[CanonicalEvent] | Path,
     *,
     descriptor: DescriptorInput,
     execution: ExecutionInput,
@@ -279,6 +310,8 @@ def run_strategy(
     runtime_mode: str = "trusted_local",
     sandbox_launcher: Path | None = None,
     sandbox_policy: Path | None = None,
+    checkpoint: Mapping[str, Any] | None = None,
+    checkpoint_mode: bool = False,
 ) -> Dict[str, Any]:
     """Run a ``CanonicalEvent`` sequence in a credential-free child process."""
 
@@ -292,6 +325,10 @@ def run_strategy(
         raise ValueError("output_limit_bytes must be a positive integer")
     if runtime_mode not in RUNTIME_MODES:
         raise ValueError("runtime_mode must be trusted_local or hardened")
+    if not isinstance(checkpoint_mode, bool):
+        raise ValueError("checkpoint_mode must be boolean")
+    if checkpoint is not None and not isinstance(checkpoint, Mapping):
+        raise ValueError("checkpoint must be an object or null")
     launcher = _sandbox_launcher(sandbox_launcher) if runtime_mode == "hardened" else None
     if runtime_mode == "trusted_local" and (
         sandbox_launcher is not None or sandbox_policy is not None
@@ -310,30 +347,63 @@ def run_strategy(
     root = Path(workspace_root).expanduser().resolve(strict=True)
     parsed_descriptor = _descriptor(descriptor, root)
     parsed_execution = _execution(execution)
-    rows = list(events)
-    if not rows:
-        raise ValueError("events must contain at least one CanonicalEvent")
-    if any(not isinstance(event, CanonicalEvent) for event in rows):
-        raise TypeError("events must contain only CanonicalEvent instances")
-    rows.sort(key=CanonicalEvent.sort_key)
-    events_fingerprint = stable_fingerprint([event.as_dict() for event in rows])
+    source_events_path: Path | None = None
+    rows: list[CanonicalEvent] | None = None
+    if isinstance(events, Path):
+        source_events_path = events.expanduser().resolve(strict=True)
+        events_count, events_fingerprint = _event_file_metadata(
+            source_events_path
+        )
+    else:
+        rows = list(events)
+        if not rows:
+            raise ValueError("events must contain at least one CanonicalEvent")
+        if any(not isinstance(event, CanonicalEvent) for event in rows):
+            raise TypeError("events must contain only CanonicalEvent instances")
+        rows.sort(key=CanonicalEvent.sort_key)
+        events_count = len(rows)
+        events_fingerprint = stable_fingerprint(
+            [event.as_dict() for event in rows]
+        )
 
-    request = {
-        "schema_version": 1,
-        "workspace_root": str(root),
-        "descriptor": parsed_descriptor.input_document(),
-        "execution": parsed_execution.input_document(),
-        "risk_policy": dict(risk_policy or {"schema_version": 1, "policy_id": "diagnostic_allow_all_v1"}),
-        "events": [event.as_dict() for event in rows],
-    }
+    risk_document = dict(
+        risk_policy
+        or {
+            "schema_version": 1,
+            "policy_id": "diagnostic_allow_all_v1",
+        }
+    )
     with tempfile.TemporaryDirectory() as tmp:
         temp_root = Path(tmp)
+        events_path = temp_root / "canonical-events.jsonl"
         request_path = temp_root / "request.json"
         output_path = temp_root / "result.json"
         stdout_path = temp_root / "stdout.log"
         stderr_path = temp_root / "stderr.log"
         sandbox_request_path = temp_root / "sandbox-request.json"
         sandbox_attestation_path = temp_root / "sandbox-attestation.json"
+        if source_events_path is not None:
+            shutil.copyfile(source_events_path, events_path)
+        else:
+            with events_path.open("wb") as handle:
+                for event in rows or []:
+                    handle.write(
+                        canonical_json_bytes(event.as_dict()) + b"\n"
+                    )
+                handle.flush()
+                os.fsync(handle.fileno())
+        request = {
+            "schema_version": 2,
+            "workspace_root": str(root),
+            "descriptor": parsed_descriptor.input_document(),
+            "execution": parsed_execution.input_document(),
+            "risk_policy": risk_document,
+            "events_path": str(events_path),
+            "events_count": events_count,
+            "events_fingerprint": events_fingerprint,
+            "checkpoint": dict(checkpoint) if checkpoint is not None else None,
+            "checkpoint_mode": checkpoint_mode,
+        }
         if launcher is not None:
             sandbox_probe, sandbox_probe_attestation = _run_sandbox_probe(
                 launcher=launcher,
@@ -363,7 +433,7 @@ def run_strategy(
                     "strategy_request": {
                         key: value
                         for key, value in request.items()
-                        if key != "workspace_root"
+                        if key not in {"workspace_root", "events_path"}
                     },
                     "worker_contract": "the-pass/strategy-worker/v1",
                     "output_limit_bytes": output_limit_bytes,
@@ -480,7 +550,7 @@ def run_strategy(
 
 
 def run_strategy_verified(
-    events: Iterable[CanonicalEvent],
+    events: Iterable[CanonicalEvent] | Path,
     *,
     descriptor: DescriptorInput,
     execution: ExecutionInput,
@@ -491,10 +561,14 @@ def run_strategy_verified(
     runtime_mode: str = "trusted_local",
     sandbox_launcher: Path | None = None,
     sandbox_policy: Path | None = None,
+    checkpoint: Mapping[str, Any] | None = None,
+    checkpoint_mode: bool = False,
 ) -> Dict[str, Any]:
     """Require two fresh workers to produce the same semantic result."""
 
-    rows = list(events)
+    rows: Iterable[CanonicalEvent] | Path = (
+        events if isinstance(events, Path) else list(events)
+    )
     first = run_strategy(
         rows,
         descriptor=descriptor,
@@ -506,6 +580,8 @@ def run_strategy_verified(
         runtime_mode=runtime_mode,
         sandbox_launcher=sandbox_launcher,
         sandbox_policy=sandbox_policy,
+        checkpoint=checkpoint,
+        checkpoint_mode=checkpoint_mode,
     )
     second = run_strategy(
         rows,
@@ -518,6 +594,8 @@ def run_strategy_verified(
         runtime_mode=runtime_mode,
         sandbox_launcher=sandbox_launcher,
         sandbox_policy=sandbox_policy,
+        checkpoint=checkpoint,
+        checkpoint_mode=checkpoint_mode,
     )
     if first != second:
         raise StrategyRuntimeError(
@@ -557,6 +635,8 @@ def runner_result_from_document(document: Mapping[str, Any]) -> RunnerResult:
             spread_cost=Decimal(str(row["spread_cost"])),
             slippage_cost=Decimal(str(row["slippage_cost"])),
             evidence=str(row["evidence"]),
+            impact_cost=Decimal(str(row.get("impact_cost", "0"))),
+            latency_ns=int(row.get("latency_ns", 0)),
         )
         for row in document["fills"]
     ]
@@ -574,4 +654,9 @@ def runner_result_from_document(document: Mapping[str, Any]) -> RunnerResult:
         },
         final_snapshot=dict(document["final_portfolio"]),
         diagnostics=dict(document["diagnostics"]),
+        checkpoint=(
+            dict(document["checkpoint"])
+            if isinstance(document.get("checkpoint"), Mapping)
+            else None
+        ),
     )

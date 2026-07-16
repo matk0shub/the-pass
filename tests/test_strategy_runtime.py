@@ -135,8 +135,26 @@ class StrategyRuntimeTests(unittest.TestCase):
         self.assertEqual(first["isolation"]["mode"], "trusted_local")
         self.assertEqual(first["isolation"]["network_enforcement"], "none")
         self.assertEqual(first["isolation"]["filesystem_enforcement"], "none")
+        self.assertEqual(first["event_transport"], "canonical_jsonl")
         self.assertFalse(first["runtime_promotion_eligible"])
         self.assertEqual(first["promotion_status"], "blocked")
+
+        events_path = self.root / "events.jsonl"
+        events_path.write_text(
+            "\n".join(
+                json.dumps(event.as_dict(), sort_keys=True)
+                for event in canonical_bars()
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        streamed = run_strategy(
+            events_path,
+            descriptor=self.descriptor,
+            execution=self.execution,
+            workspace_root=self.root,
+        )
+        self.assertEqual(streamed, first)
 
     def test_trusted_local_runtime_reports_host_access_truthfully(self) -> None:
         marker = self.root / "strategy-side-effect.txt"
@@ -155,6 +173,78 @@ class StrategyRuntimeTests(unittest.TestCase):
         self.assertEqual(marker.read_text(encoding="utf-8"), "written")
         self.assertEqual(result["isolation"]["network_enforcement"], "none")
         self.assertEqual(result["isolation"]["filesystem_enforcement"], "none")
+
+    def test_checkpoint_binds_runtime_inputs_and_requires_forward_chronology(
+        self,
+    ) -> None:
+        checkpoint_source = VALID_STRATEGY.replace(
+            "\n\ndef build_strategy",
+            (
+                "\n    def export_state(self):\n"
+                "        return {}\n"
+                "    def import_state(self, state):\n"
+                "        if state != {}:\n"
+                "            raise ValueError('invalid state')\n"
+                "\n\ndef build_strategy"
+            ),
+        )
+        (self.root / "strategy.py").write_text(
+            checkpoint_source, encoding="utf-8"
+        )
+        first = run_strategy(
+            canonical_bars(),
+            descriptor=self.descriptor,
+            execution=self.execution,
+            workspace_root=self.root,
+            checkpoint_mode=True,
+        )
+        checkpoint = first["checkpoint"]
+        self.assertEqual(
+            checkpoint["descriptor_fingerprint"],
+            first["descriptor_fingerprint"],
+        )
+        self.assertEqual(
+            checkpoint["execution_fingerprint"],
+            first["execution_fingerprint"],
+        )
+        self.assertEqual(
+            checkpoint["risk_fingerprint"],
+            first["risk_fingerprint"],
+        )
+
+        changed_execution = {**self.execution, "fee_rate": "0.002"}
+        with self.assertRaisesRegex(
+            StrategyRuntimeError, "strategy worker failed"
+        ):
+            run_strategy(
+                [
+                    CanonicalEvent.from_dict(
+                        {
+                            **canonical_bars()[-1].as_dict(),
+                            "event_time_ns": 3,
+                            "receive_time_ns": 3,
+                            "sequence": 3,
+                            "ingest_id": "bar-3",
+                        }
+                    )
+                ],
+                descriptor=self.descriptor,
+                execution=changed_execution,
+                workspace_root=self.root,
+                checkpoint=checkpoint,
+                checkpoint_mode=True,
+            )
+        with self.assertRaisesRegex(
+            StrategyRuntimeError, "strategy worker failed"
+        ):
+            run_strategy(
+                canonical_bars(),
+                descriptor=self.descriptor,
+                execution=self.execution,
+                workspace_root=self.root,
+                checkpoint=checkpoint,
+                checkpoint_mode=True,
+            )
 
     def test_hardened_runtime_requires_and_verifies_launcher_attestation(self) -> None:
         with self.assertRaisesRegex(StrategyRuntimeError, "sandbox launcher"):
@@ -553,18 +643,18 @@ class StrategyRuntimeTests(unittest.TestCase):
                 descriptor=self.descriptor,
                 execution=self.execution,
                 variants=[{"quantity": "1"}, {"quantity": "2"}],
-                splits=[
-                    {"start": 0, "end": 24},
-                    {"start": 24, "end": 48},
-                    {"start": 48, "end": 72},
-                    {"start": 72, "end": 96},
-                ],
+                splits=None,
                 selected_index=0,
                 registration_path=registration,
                 workspace_root=self.root,
+                train_size=24,
+                test_size=18,
+                null_variant_index=1,
             )
         self.assertEqual(report["status"], "complete")
-        self.assertEqual(len(report["cells"]), 8)
+        self.assertEqual(report["schema_version"], 3)
+        self.assertEqual(len(report["cells"]), 16)
+        self.assertEqual(len(report["fold_results"]), 4)
         self.assertEqual(report["failed_cells"], 0)
         self.assertIn("pbo", report["statistics"])
         registration_document = json.loads(registration.read_text(encoding="utf-8"))
@@ -581,15 +671,13 @@ class StrategyRuntimeTests(unittest.TestCase):
                     descriptor=self.descriptor,
                     execution=self.execution,
                     variants=[{"quantity": "1"}, {"quantity": "2"}],
-                    splits=[
-                        {"start": 0, "end": 24},
-                        {"start": 24, "end": 48},
-                        {"start": 48, "end": 72},
-                        {"start": 72, "end": 96},
-                    ],
+                    splits=None,
                     selected_index=0,
                     registration_path=registration,
                     workspace_root=self.root,
+                    train_size=24,
+                    test_size=18,
+                    null_variant_index=1,
                 )
             duplicate_worker.assert_not_called()
 
@@ -607,15 +695,13 @@ class StrategyRuntimeTests(unittest.TestCase):
             descriptor=self.descriptor,
             execution=self.execution,
             variants=[{"quantity": "1"}, {"quantity": "2"}],
-            splits=[
-                {"start": 0, "end": 24},
-                {"start": 24, "end": 48},
-                {"start": 48, "end": 72},
-                {"start": 72, "end": 96},
-            ],
+            splits=None,
             selected_index=0,
             registration_path=changed_registration,
             workspace_root=self.root,
+            train_size=24,
+            test_size=18,
+            null_variant_index=1,
         )
         changed_document = json.loads(
             changed_registration.read_text(encoding="utf-8")

@@ -9,6 +9,7 @@
     "borrow": 0.0,
     "fees": 0.226739325,
     "funding": 0.0,
+    "impact": 0.0,
     "rejects_or_missed_fills": 0.0,
     "roll": 0.0,
     "slippage": 0.113375,

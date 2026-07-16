@@ -5,6 +5,34 @@ and the Keep a Changelog structure.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-07-16
+
+### Added
+
+- Added `robustness_report.v3` with complete train/test cells, deterministic train-only fold
+  selection, stitched OOS returns, aligned variant matrices, and autocorrelation-adjusted effective
+  sample size.
+- Added execution config v2 with minimum latency, participation limits, explicit impact,
+  event-level fees, deterministic equity sampling, and instrument lifecycle accounting.
+- Added canonical JSONL worker transport, simulator and strategy checkpoints, incremental paper
+  batches, and periodic clean-replay parity audits.
+
+### Changed
+
+- New paper candidates require robustness v3; v2 remains readable as historical evidence.
+- PBO, PSR, DSR, Reality Check/SPA, null comparison, parameter stability, and promotion eligibility
+  are recomputed from untouched OOS periodic returns.
+- Futures now use multiplier-aware cash-settled PnL, signed funding, and explicit settlement;
+  spot and prediction inventory remain cash-accounted.
+- Custom backtests no longer duplicate the complete serialized event history in worker requests.
+
+### Fixed
+
+- Walk-forward folds can no longer select a variant using test evidence.
+- Same-event and pre-latency fills, unlimited depth participation, and hidden impact are blocked.
+- Stateful paper strategies no longer need to replay their entire history on every batch, while
+  periodic full replay still detects checkpoint divergence.
+
 ## [0.14.0] - 2026-07-16
 
 ### Added

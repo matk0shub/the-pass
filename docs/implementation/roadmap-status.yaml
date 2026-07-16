@@ -66,6 +66,7 @@ milestones:
     gate_evidence: reports/gates/V3_2026-07-10.yaml
     evidence:
       - reports/gates/V3_2026-07-10.md
+      - reports/v3/donchian_momentum/robustness_registration.json
       - reports/v3/donchian_momentum/robustness_report.json
       - reports/v3/donchian_momentum/risk_report.json
       - reports/v3/donchian_momentum/stats_audit.json
