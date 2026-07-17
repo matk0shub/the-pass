@@ -22,6 +22,7 @@ from the_pass.engine.fills import (
 )
 from the_pass.engine.portfolio import AccountingPortfolio
 from the_pass.engine.screen import ReferenceScreenRunner
+from the_pass.engine.workflows import run_baseline
 from the_pass.validator import validate_package
 
 
@@ -223,6 +224,27 @@ class ScreenTests(unittest.TestCase):
 
 
 class BaselineGoldenTests(unittest.TestCase):
+    def test_fresh_buy_hold_run_matches_inline_golden_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = run_baseline("buy_hold", Path(tmp) / "package")
+            metrics = json.loads(
+                (package / "metrics_report.json").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(Decimal(str(metrics["gross_metrics"]["pnl"])), Decimal("24.85"))
+        self.assertEqual(
+            Decimal(str(metrics["net_metrics"]["pnl"])),
+            Decimal("24.515137425"),
+        )
+        self.assertEqual(
+            Decimal(str(metrics["gross_metrics"]["sharpe"])),
+            Decimal("629.158765661"),
+        )
+        self.assertEqual(
+            Decimal(str(metrics["net_metrics"]["sharpe"])),
+            Decimal("616.183460291"),
+        )
+
     def test_exact_golden_net_results(self) -> None:
         expected = {
             "buy_hold": "24.515137425",

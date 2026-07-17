@@ -24,6 +24,7 @@ from the_pass.attestation import (
     write_registry_snapshot,
     write_reviewer_attestation,
 )
+from the_pass.audit.reproduction import bind_robustness_reproduction
 from the_pass.cli import main as cli_main
 from the_pass.data.contracts import stable_fingerprint
 from the_pass.ledger import (
@@ -32,21 +33,31 @@ from the_pass.ledger import (
     artifact_identity_sha256,
     append_gate_decision,
     append_ledger_entry,
+    append_robustness_registration,
     build_gate_ledger_entry,
-    build_run_entry,
+    build_run_entry as _build_run_entry,
     hash_entry,
     read_ledger_entries,
     verify_ledger_file,
 )
 from the_pass.gates import GateEvaluationError, evaluate_gate, write_gate_decision
 from the_pass.robustness import (
+    MANDATORY_STRESS_SCENARIOS,
     cscv_pbo,
     deflated_sharpe_ratio,
     effective_sample_size,
+    mean_difference_permutation_pvalue,
     probabilistic_sharpe_ratio_effective,
     reality_check,
+    run_stress_suite,
+    run_strategy_sweep,
+    stress_parameters_from_cost_waterfall,
 )
-from the_pass.validator import default_schema_dir, validate_artifact, validate_package
+from the_pass.validator import (
+    default_schema_dir,
+    validate_artifact,
+    validate_package as _validate_package,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,19 +71,51 @@ ADAPTER_EXAMPLES = (
     ROOT / "examples" / "adapters" / "generic-prediction-market.yaml",
 )
 SCHEMA_DIR = ROOT / "schemas"
+PACKAGED_POLICY_SHA256 = hashlib.sha256(
+    (ROOT / "src/the_pass/policies/risk-policies.v1.yaml").read_bytes()
+).hexdigest()
 ATTESTATION_TEST_PRIVATE, ATTESTATION_TEST_PUBLIC = generate_reviewer_keypair()
 
 
-def add_robustness_report(package: Path) -> None:
+def build_run_entry(
+    package: Path, *, recorded_at: str | None = None, ledger_path: Path | None = None
+) -> dict:
+    """Use the test operator ledger for promotion-bearing package fixtures."""
+
+    if ledger_path is None and (package / "robustness_report.json").exists():
+        ledger_path = package.parent / "ledger.jsonl"
+    return _build_run_entry(
+        package, recorded_at=recorded_at, ledger_path=ledger_path
+    )
+
+
+def validate_package(
+    package: Path,
+    *,
+    schema_dir: Path | None = None,
+    ledger_path: Path | None = None,
+):
+    """Use the test operator ledger for promotion-bearing package fixtures."""
+
+    if ledger_path is None and (package / "robustness_report.json").exists():
+        ledger_path = package.parent / "ledger.jsonl"
+    return _validate_package(
+        package, schema_dir=schema_dir, ledger_path=ledger_path
+    )
+
+
+def add_robustness_report(
+    package: Path, *, ledger_path: Path | None = None
+) -> None:
     train_returns = (
         [0.0005, 0.0015, 0.0005, 0.0015, 0.0005],
         [0.002, 0.004, 0.002, 0.004, 0.002],
-        [-0.002, 0, -0.002, 0, -0.002],
+        [0, 0, 0, 0, 0],
     )
     test_returns = (
         [0.0005, 0.0015] * 5,
         [0.001, 0.003] * 5,
-        [-0.002, 0] * 5,
+        [0, 0] * 5,
     )
     selected_index = 1
     null_index = 2
@@ -98,7 +141,7 @@ def add_robustness_report(package: Path) -> None:
         "variants": [
             {"lookback": 5},
             {"lookback": 10},
-            {"role": "null"},
+            {"role": "null", "kind": "flat"},
         ],
         "reference_variant_index": selected_index,
         "null_variant_index": null_index,
@@ -107,18 +150,14 @@ def add_robustness_report(package: Path) -> None:
         "selection_policy": "select each fold only from complete train-cell net returns",
     }
     registration["registration_fingerprint"] = stable_fingerprint(registration)
-    mandatory_stress = (
-        "fees_x1_5",
-        "slippage_x2",
-        "latency_x2",
-        "depth_x0_5",
-        "depth_x0_25",
-        "maker_fill_probability_x0_5",
-        "funding_worst_decile",
-        "exchange_outage",
-        "missing_interval",
-        "correlated_gap",
-        "forced_deleverage",
+    ledger = ledger_path or package / "robustness-registration-ledger.jsonl"
+    ledger_receipt = append_robustness_registration(
+        ledger,
+        events_fingerprint=registration["events_fingerprint"],
+        descriptor_fingerprint=registration["descriptor_fingerprint"],
+        registration_fingerprint=registration["registration_fingerprint"],
+        variant_count=len(registration["variants"]),
+        recorded_at="2026-01-31T00:00:00Z",
     )
     cells = []
     fold_results = []
@@ -166,7 +205,14 @@ def add_robustness_report(package: Path) -> None:
         "id": "fixture-robustness",
         "created_at": "2026-01-31T00:00:00Z",
         "source_package_id": "pkg_" + "a" * 24,
+        "evidence_binding": "unverified_cells",
         "registration": registration,
+        "ledger_registration": {
+            "ledger_path": str(ledger.resolve()),
+            "entry_hash": ledger_receipt.entry["entry_hash"],
+            "attempt": 1,
+            "effective_trial_count": 3,
+        },
         "cells": cells,
         "fold_results": fold_results,
         "failed_cells": 0,
@@ -183,10 +229,18 @@ def add_robustness_report(package: Path) -> None:
                 selected,
                 trial_sharpes=trial_sharpes,
                 effective_observations=sample["effective_observations"],
+                effective_trial_count=3,
             ),
             "reality_check": reality_check(
                 oos_matrix, bootstrap_samples=500, seed=7
             ),
+            "thresholds": {
+                "maximum_pbo": 0.10,
+                "minimum_dsr": 0.95,
+                "maximum_reality_check_pvalue": 0.10,
+                "policy_sha256": PACKAGED_POLICY_SHA256,
+            },
+            "effective_trial_count": 3,
         },
         "validation": {
             "mode": "purged_walk_forward",
@@ -212,18 +266,29 @@ def add_robustness_report(package: Path) -> None:
             "variant_index": null_index,
             "status": "pass",
             "selected_mean_return": 0.002,
-            "baseline_mean_return": -0.001,
+            "baseline_mean_return": 0.0,
+            "pvalue": mean_difference_permutation_pvalue(
+                selected, [0.0] * len(selected), samples=2000, seed=7
+            )["pvalue"],
+            "block_length": mean_difference_permutation_pvalue(
+                selected, [0.0] * len(selected), samples=2000, seed=7
+            )["block_length"],
+            "test": "paired_one_sided_circular_block_sign_flip_mean_difference",
+            "structure": {
+                "status": "pass",
+                "check": "every_complete_cell_periodic_return_exactly_zero",
+                "tolerance": 0.0,
+                "diagnostic": {
+                    "check": "each_cell_mean_net_return_near_zero",
+                    "tolerance": 1e-12,
+                    "status": "pass",
+                },
+                "limitation": "the tolerance check is diagnostic only; promotion requires every periodic return to equal exactly 0.0",
+            },
             "summary": "candidate exceeded the preregistered null baseline",
         },
-        "stress_results": [
-            {
-                "scenario": scenario,
-                "status": "pass",
-                "net_pnl": 0.1,
-                "summary": f"{scenario} remained net positive",
-            }
-            for scenario in mandatory_stress
-        ],
+        "stress_results": [],
+        "stress_evidence": None,
         "parameter_stability": {
             "status": "pass",
             "neighbor_indices": [0],
@@ -236,9 +301,49 @@ def add_robustness_report(package: Path) -> None:
         "status": "complete",
         "promotion_eligible": True,
     }
+    stress_source = (
+        ROOT / "examples/b2-baselines/donchian_momentum/package"
+    ).resolve()
+    cost_path = stress_source / "cost_waterfall.json"
+    report["source_package_id"] = build_run_entry(stress_source)["package_id"]
+    costs = json.loads(cost_path.read_text(encoding="utf-8"))
+    stress = run_stress_suite(
+        stress_parameters_from_cost_waterfall(costs, selected)
+    )
+    report["stress_results"] = [
+        {
+            key: row[key]
+            for key in (
+                "scenario",
+                "status",
+                "net_pnl",
+                "summary",
+                "inputs_source",
+                "formula",
+            )
+        }
+        for row in stress
+    ]
+    report["stress_evidence"] = {
+        "source_package_path": str(stress_source),
+        "source_package_id": report["source_package_id"],
+        "cost_waterfall_sha256": hashlib.sha256(cost_path.read_bytes()).hexdigest(),
+    }
+    report["promotion_eligible"] = report["promotion_eligible"] and all(
+        row["scenario"] in MANDATORY_STRESS_SCENARIOS
+        and row["status"] == "pass"
+        for row in report["stress_results"]
+    )
     report["report_fingerprint"] = stable_fingerprint(report)
     (package / "robustness_report.json").write_text(
         json.dumps(report), encoding="utf-8"
+    )
+    reproduction = bind_robustness_reproduction(
+        {"schema_version": 1, "status": "pass", "fixture_only": True},
+        report,
+    )
+    (package / "reproduction_report.json").write_text(
+        json.dumps(reproduction), encoding="utf-8"
     )
 
 
@@ -542,8 +647,12 @@ def workflow_artifacts() -> dict[str, dict]:
 
 
 def prepare_paper_candidate(
-    package: Path, *, reviewer: str = "independent-auditor"
+    package: Path,
+    *,
+    reviewer: str = "independent-auditor",
+    ledger_path: Path | None = None,
 ) -> None:
+    ledger_path = ledger_path or package.parent / "ledger.jsonl"
     for name in (
         "strategy_spec.json",
         "data_manifest.json",
@@ -606,31 +715,16 @@ def prepare_paper_candidate(
         "median_interval_seconds": 60,
         "periods_per_year": 525960,
     }
-    add_robustness_report(package)
-    robustness = json.loads(
-        (package / "robustness_report.json").read_text(encoding="utf-8")
-    )
-    metrics["robustness"] = {
-        "null_baseline_result": robustness["null_baseline"]["summary"],
-        "dsr_or_psr": robustness["statistics"]["dsr"],
-        "pbo": robustness["statistics"]["pbo"]["pbo"],
-        "stress_results": [
-            row["summary"] for row in robustness["stress_results"]
-        ],
-        "parameter_stability": robustness["parameter_stability"]["summary"],
-    }
-    metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
-
     costs_path = package / "cost_waterfall.json"
     costs = json.loads(costs_path.read_text(encoding="utf-8"))
     costs["gross_pnl"] = 1.0
     costs["net_pnl"] = 0.5
     costs["costs"].update(
         {
-            "fees": 0.1,
-            "spread": 0.2,
-            "slippage": 0.2,
-            "impact": 0,
+            "fees": 0.05,
+            "spread": 0.05,
+            "slippage": 0.05,
+            "impact": 0.35,
             "funding": 0,
             "borrow": 0,
             "roll": 0,
@@ -646,6 +740,21 @@ def prepare_paper_candidate(
         }
     )
     costs_path.write_text(json.dumps(costs), encoding="utf-8")
+
+    add_robustness_report(package, ledger_path=ledger_path)
+    robustness = json.loads(
+        (package / "robustness_report.json").read_text(encoding="utf-8")
+    )
+    metrics["robustness"] = {
+        "null_baseline_result": robustness["null_baseline"]["summary"],
+        "dsr_or_psr": robustness["statistics"]["dsr"],
+        "pbo": robustness["statistics"]["pbo"]["pbo"],
+        "stress_results": [
+            row["summary"] for row in robustness["stress_results"]
+        ],
+        "parameter_stability": robustness["parameter_stability"]["summary"],
+    }
+    metrics_path.write_text(json.dumps(metrics), encoding="utf-8")
 
     findings = workflow_artifacts()["findings"]
     findings["package"] = "."
@@ -925,6 +1034,236 @@ def add_paper_gate_artifacts(
 
 
 class ValidatorTests(unittest.TestCase):
+    def test_promotion_requires_registration_in_operator_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            empty_operator_ledger = root / "operator-ledger.jsonl"
+            empty_operator_ledger.write_text("", encoding="utf-8")
+            result = validate_artifact(
+                root / "robustness_report.json",
+                artifact_type="robustness_report",
+                ledger_path=empty_operator_ledger,
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                issue.path == "$.ledger_registration"
+                and "latest ledger-backed registration" in issue.message
+                for issue in result.issues
+            ),
+            [issue.as_dict() for issue in result.issues],
+        )
+
+    def test_unverified_cells_require_bound_reproduction_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            (root / "reproduction_report.json").unlink()
+            result = validate_artifact(
+                root / "robustness_report.json",
+                artifact_type="robustness_report",
+                ledger_path=root / "robustness-registration-ledger.jsonl",
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                issue.path == "$.evidence_binding"
+                and "passing sibling reproduction_report.json" in issue.message
+                for issue in result.issues
+            ),
+            [issue.as_dict() for issue in result.issues],
+        )
+
+    def test_flat_null_tiny_nonzero_return_blocks_promotion(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            path = root / "robustness_report.json"
+            report = json.loads(path.read_text(encoding="utf-8"))
+            cell = next(
+                row
+                for row in report["cells"]
+                if row["phase"] == "train"
+                and row["variant_index"]
+                == report["registration"]["null_variant_index"]
+            )
+            cell["periodic_returns"][0] = 2**-40
+            cell["net_return"] = math.prod(
+                1 + value for value in cell["periodic_returns"]
+            ) - 1
+            report["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in report.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(report), encoding="utf-8")
+            result = validate_artifact(
+                path,
+                artifact_type="robustness_report",
+                ledger_path=root / "robustness-registration-ledger.jsonl",
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(issue.path == "$.null_baseline" for issue in result.issues)
+        )
+
+    def test_seeded_random_null_cannot_support_promotion(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            path = root / "robustness_report.json"
+            report = json.loads(path.read_text(encoding="utf-8"))
+            registration = report["registration"]
+            null_variant = registration["variants"][
+                registration["null_variant_index"]
+            ]
+            null_variant.clear()
+            null_variant.update(
+                {"role": "null", "kind": "seeded_random", "seed": 17}
+            )
+            registration["registration_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in registration.items()
+                    if key != "registration_fingerprint"
+                }
+            )
+            report["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in report.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(report), encoding="utf-8")
+            result = validate_artifact(
+                path,
+                artifact_type="robustness_report",
+                ledger_path=root / "robustness-registration-ledger.jsonl",
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                "diagnostic only and cannot support promotion" in issue.message
+                for issue in result.issues
+            )
+        )
+
+    def test_stress_cost_waterfall_sha_mismatch_blocks_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            path = root / "robustness_report.json"
+            report = json.loads(path.read_text(encoding="utf-8"))
+            report["stress_evidence"]["cost_waterfall_sha256"] = "0" * 64
+            report["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in report.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(report), encoding="utf-8")
+            result = validate_artifact(
+                path,
+                artifact_type="robustness_report",
+                ledger_path=root / "robustness-registration-ledger.jsonl",
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                issue.path == "$.stress_evidence.cost_waterfall_sha256"
+                for issue in result.issues
+            )
+        )
+
+    def test_non_packaged_policy_fingerprint_blocks_promotion(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            path = root / "robustness_report.json"
+            report = json.loads(path.read_text(encoding="utf-8"))
+            report["statistics"]["thresholds"]["policy_sha256"] = "f" * 64
+            report["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in report.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(report), encoding="utf-8")
+            result = validate_artifact(
+                path,
+                artifact_type="robustness_report",
+                ledger_path=root / "robustness-registration-ledger.jsonl",
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                "packaged risk policy fingerprint" in issue.message
+                for issue in result.issues
+            )
+        )
+
+    def test_non_structural_null_registration_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(
+                ValueError, "null variant must declare role=null"
+            ):
+                run_strategy_sweep(
+                    [],
+                    descriptor={},
+                    execution={},
+                    variants=[{"lookback": 5}, {"disabled": True}],
+                    splits=[],
+                    selected_index=0,
+                    registration_path=Path(tmp) / "registration.json",
+                    workspace_root=Path(tmp),
+                    null_variant_index=1,
+                )
+
+    def test_registration_attempts_increase_trials_and_lower_dsr(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "ledger.jsonl"
+            first = append_robustness_registration(
+                ledger,
+                events_fingerprint="1" * 64,
+                descriptor_fingerprint="2" * 64,
+                registration_fingerprint="3" * 64,
+                variant_count=100,
+                recorded_at="2026-01-01T00:00:00Z",
+            )
+            second = append_robustness_registration(
+                ledger,
+                events_fingerprint="1" * 64,
+                descriptor_fingerprint="2" * 64,
+                registration_fingerprint="4" * 64,
+                variant_count=2,
+                recorded_at="2026-01-02T00:00:00Z",
+            )
+            effective_trials = sum(
+                entry["variant_count"] for entry in read_ledger_entries(ledger)
+            )
+        returns = [0.01, -0.004, 0.008, 0.002, -0.001, 0.006] * 20
+        trial_sharpes = [0.1, 0.2, 0.3]
+        first_dsr = deflated_sharpe_ratio(
+            returns,
+            trial_sharpes=trial_sharpes,
+            effective_trial_count=100,
+        )
+        second_dsr = deflated_sharpe_ratio(
+            returns,
+            trial_sharpes=trial_sharpes,
+            effective_trial_count=102,
+        )
+        self.assertEqual(first.entry["attempt"], 1)
+        self.assertEqual(second.entry["attempt"], 2)
+        self.assertEqual(effective_trials, 102)
+        self.assertLess(second_dsr, first_dsr)
+
     def test_concurrent_receipt_appends_preserve_hash_chain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1470,6 +1809,9 @@ safety:
             robustness = json.loads(
                 (source / "robustness_report.json").read_text(encoding="utf-8")
             )
+            fixture_reproduction = json.loads(
+                (source / "reproduction_report.json").read_text(encoding="utf-8")
+            )
             findings = json.loads(
                 (source / "findings.json").read_text(encoding="utf-8")
             )
@@ -1487,6 +1829,33 @@ safety:
             append_ledger_entry(ledger, source)
             source_id = build_run_entry(source, ledger_path=ledger)["package_id"]
             robustness["source_package_id"] = source_id
+            source_cost_path = source / "cost_waterfall.json"
+            source_costs = json.loads(source_cost_path.read_text(encoding="utf-8"))
+            robustness["stress_results"] = [
+                {
+                    key: row[key]
+                    for key in (
+                        "scenario",
+                        "status",
+                        "net_pnl",
+                        "summary",
+                        "inputs_source",
+                        "formula",
+                    )
+                }
+                for row in run_stress_suite(
+                    stress_parameters_from_cost_waterfall(
+                        source_costs, robustness["selected_oos_returns"]
+                    )
+                )
+            ]
+            robustness["stress_evidence"] = {
+                "source_package_path": str(source.resolve()),
+                "source_package_id": source_id,
+                "cost_waterfall_sha256": hashlib.sha256(
+                    source_cost_path.read_bytes()
+                ).hexdigest(),
+            }
             robustness["report_fingerprint"] = stable_fingerprint(
                 {
                     key: value
@@ -1495,6 +1864,15 @@ safety:
                 }
             )
             robustness_path.write_text(json.dumps(robustness), encoding="utf-8")
+            reproduction_path = root / "reproduction_report.json"
+            reproduction_path.write_text(
+                json.dumps(
+                    bind_robustness_reproduction(
+                        fixture_reproduction, robustness
+                    )
+                ),
+                encoding="utf-8",
+            )
             findings_path.write_text(json.dumps(findings), encoding="utf-8")
 
             assembled, package_id = assemble_research_candidate(
@@ -1613,6 +1991,180 @@ safety:
                 )
             )
 
+    def test_recomputed_pbo_above_policy_blocks_promotion_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            path = root / "robustness_report.json"
+            report = json.loads(path.read_text(encoding="utf-8"))
+            block_scores = [
+                [0.003, 0.003, 0.0],
+                [-0.005, -0.004, 0.0],
+                [0.0, -0.001, 0.0],
+                [0.005, 0.001, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.002, 0.002, 0.0],
+                [-0.003, 0.003, 0.0],
+                [0.004, 0.006, 0.0],
+            ]
+            matrix = [row for row in block_scores for _ in range(5)]
+            for fold in range(4):
+                fold_matrix = matrix[fold * 10 : (fold + 1) * 10]
+                for variant in range(3):
+                    cell = next(
+                        item
+                        for item in report["cells"]
+                        if item["fold_id"] == fold
+                        and item["phase"] == "test"
+                        and item["variant_index"] == variant
+                    )
+                    periodic = [row[variant] for row in fold_matrix]
+                    cell["periodic_returns"] = periodic
+                    cell["net_return"] = math.prod(1 + value for value in periodic) - 1
+                selected_cell = next(
+                    item
+                    for item in report["cells"]
+                    if item["fold_id"] == fold
+                    and item["phase"] == "test"
+                    and item["variant_index"] == 1
+                )
+                report["fold_results"][fold]["selected_test_return"] = selected_cell[
+                    "net_return"
+                ]
+            selected = [row[1] for row in matrix]
+            report["oos_matrix"] = matrix
+            report["selected_oos_returns"] = selected
+            sample = effective_sample_size(selected)
+            report["sample"] = sample
+            trial_sharpes = []
+            for column in range(3):
+                values = [row[column] for row in matrix]
+                average = sum(values) / len(values)
+                variance = sum((value - average) ** 2 for value in values) / (
+                    len(values) - 1
+                )
+                trial_sharpes.append(average / variance**0.5 if variance else 0.0)
+            report["statistics"] = {
+                "pbo": cscv_pbo(matrix, blocks=8),
+                "psr": probabilistic_sharpe_ratio_effective(
+                    selected,
+                    effective_observations=sample["effective_observations"],
+                ),
+                "dsr": deflated_sharpe_ratio(
+                    selected,
+                    trial_sharpes=trial_sharpes,
+                    effective_observations=sample["effective_observations"],
+                    effective_trial_count=3,
+                ),
+                "reality_check": reality_check(
+                    matrix, bootstrap_samples=500, seed=7
+                ),
+                "thresholds": {
+                    "maximum_pbo": 0.10,
+                    "minimum_dsr": 0.95,
+                    "maximum_reality_check_pvalue": 0.10,
+                    "policy_sha256": PACKAGED_POLICY_SHA256,
+                },
+                "effective_trial_count": 3,
+            }
+            null_test = mean_difference_permutation_pvalue(
+                selected, [0.0] * len(selected), samples=2000, seed=7
+            )
+            report["null_baseline"].update(
+                {
+                    "selected_mean_return": sum(selected) / len(selected),
+                    "baseline_mean_return": 0.0,
+                    "pvalue": null_test["pvalue"],
+                    "block_length": null_test["block_length"],
+                }
+            )
+            neighbor_returns = []
+            for fold in range(4):
+                cell = next(
+                    item
+                    for item in report["cells"]
+                    if item["fold_id"] == fold
+                    and item["phase"] == "test"
+                    and item["variant_index"] == 0
+                )
+                neighbor_returns.append(float(cell["net_return"]))
+            worst_neighbor = min(neighbor_returns)
+            report["parameter_stability"].update(
+                {
+                    "status": "pass" if worst_neighbor > 0 else "blocked",
+                    "worst_neighbor_return": worst_neighbor,
+                }
+            )
+            cost_path = Path(report["stress_evidence"]["source_package_path"]) / "cost_waterfall.json"
+            costs = json.loads(cost_path.read_text(encoding="utf-8"))
+            stress = run_stress_suite(
+                stress_parameters_from_cost_waterfall(costs, selected)
+            )
+            report["stress_results"] = [
+                {
+                    key: row[key]
+                    for key in (
+                        "scenario",
+                        "status",
+                        "net_pnl",
+                        "summary",
+                        "inputs_source",
+                        "formula",
+                    )
+                }
+                for row in stress
+            ]
+            self.assertGreater(report["statistics"]["pbo"]["pbo"], 0.10)
+            report["promotion_eligible"] = True
+            report["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in report.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(report), encoding="utf-8")
+            result = validate_artifact(path, artifact_type="robustness_report")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                "recomputed PBO" in issue.message
+                and "exceeds policy maximum" in issue.message
+                for issue in result.issues
+            ),
+            [issue.as_dict() for issue in result.issues],
+        )
+
+    def test_promotion_claim_rejects_caller_sourced_stress_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            add_robustness_report(root)
+            path = root / "robustness_report.json"
+            report = json.loads(path.read_text(encoding="utf-8"))
+            for row in report["stress_results"]:
+                row["inputs_source"] = "caller"
+                row["formula"] = "caller_supplied"
+            report["stress_evidence"] = None
+            report["promotion_eligible"] = True
+            report["report_fingerprint"] = stable_fingerprint(
+                {
+                    key: value
+                    for key, value in report.items()
+                    if key != "report_fingerprint"
+                }
+            )
+            path.write_text(json.dumps(report), encoding="utf-8")
+            result = validate_artifact(path, artifact_type="robustness_report")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                "cannot use caller-sourced stress rows" in issue.message
+                for issue in result.issues
+            )
+        )
+
     def test_paper_candidate_rejects_self_review(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "package"
@@ -1693,7 +2245,11 @@ safety:
 
         self.assertFalse(result.ok)
         self.assertTrue(
-            any("gross_pnl minus" in issue.message for issue in result.issues)
+            any(
+                "gross_pnl minus" in issue.message
+                or "source package cost evidence" in issue.message
+                for issue in result.issues
+            )
         )
 
     def test_paper_candidate_requires_out_of_sample_evidence(self) -> None:
@@ -1987,7 +2543,8 @@ safety:
         self.assertEqual(evaluation.decision["gate_result"], "pass")
         self.assertTrue(appended.appended)
         self.assertEqual(
-            [entry["entry_kind"] for entry in entries], ["run", "gate_decision"]
+            [entry["entry_kind"] for entry in entries],
+            ["robustness_registration", "run", "gate_decision"],
         )
         self.assertFalse(issues, [issue.as_dict() for issue in issues])
 
@@ -2711,18 +3268,15 @@ safety:
             }
             ledger.write_text(json.dumps(forged) + "\n", encoding="utf-8")
 
-            evaluation = evaluate_gate(
-                package,
-                gate="risk_review",
-                reviewer="independent-risk-reviewer",
-                ledger_path=ledger,
-            )
-
-        self.assertEqual(evaluation.exit_code, 2)
-        self.assertIn(
-            "exact package has no passed paper_gate decision",
-            evaluation.decision["blockers"],
-        )
+            with self.assertRaisesRegex(
+                GateEvaluationError, "ledger_registration.*entry_hash"
+            ):
+                evaluate_gate(
+                    package,
+                    gate="risk_review",
+                    reviewer="independent-risk-reviewer",
+                    ledger_path=ledger,
+                )
 
     def test_gate_evaluator_rejects_invalid_gate_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

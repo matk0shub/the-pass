@@ -110,10 +110,13 @@ def _metrics(
         "turnover": turnover,
         "average_holding_period": mean(holding) / 1_000_000_000 if holding else None,
         "expected_shortfall": expected_shortfall,
-        "capacity_estimate": float(initial_cash) * 10,
+        "capacity_estimate": None,
     }
     values = {name: _stable_metric(value) for name, value in values.items()}
     reasons = {name: "insufficient observations for diagnostic metric" for name, value in values.items() if value is None}
+    reasons["capacity_estimate"] = (
+        "not estimated without market depth, participation, and impact evidence"
+    )
     return values, reasons
 
 

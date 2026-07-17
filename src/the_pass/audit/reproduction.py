@@ -25,6 +25,40 @@ class ReproductionError(ValueError):
     """Raised when a reproduction specification is unsafe or invalid."""
 
 
+def bind_robustness_reproduction(
+    reproduction_receipt: Mapping[str, Any],
+    robustness_report: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind a clean reproduction receipt to robustness inputs and outputs.
+
+    This is an integrity binding, not a per-cell runtime receipt chain.  It
+    records exactly which caller-visible robustness evidence accompanied the
+    clean package reproduction so validators can reject stale or mismatched
+    receipts without overstating cell-level provenance.
+    """
+
+    registration = robustness_report.get("registration")
+    statistics = robustness_report.get("statistics")
+    cells = robustness_report.get("cells")
+    selected_returns = robustness_report.get("selected_oos_returns")
+    if not isinstance(registration, Mapping):
+        raise ReproductionError("robustness report registration is missing")
+    if not isinstance(statistics, Mapping) or not isinstance(cells, list):
+        raise ReproductionError("robustness report output evidence is missing")
+    if not isinstance(selected_returns, list):
+        raise ReproductionError("robustness report selected returns are missing")
+    binding = {
+        "binding_grade": "reproduction_integrity_not_cell_provenance",
+        "registration_fingerprint": registration.get("registration_fingerprint"),
+        "events_fingerprint": registration.get("events_fingerprint"),
+        "statistics_fingerprint": stable_fingerprint(statistics),
+        "cells_fingerprint": stable_fingerprint(cells),
+        "selected_oos_returns_fingerprint": stable_fingerprint(selected_returns),
+    }
+    binding["binding_fingerprint"] = stable_fingerprint(binding)
+    return {**dict(reproduction_receipt), "robustness_binding": binding}
+
+
 def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 

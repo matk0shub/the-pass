@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -495,8 +496,33 @@ def validate_packaged_policy() -> None:
     profiles = routing.get("profile_order")
     if profiles != ["economy", "balanced", "deep"]:
         fail("agent model routing must expose economy, balanced, and deep profiles")
-    if routing.get("catalog_reviewed_at") != "2026-07-11":
-        fail("agent model catalog review date must match the release audit")
+    try:
+        catalog_reviewed_at = date.fromisoformat(
+            str(routing.get("catalog_reviewed_at", ""))
+        )
+        source_review_dates = [
+            date.fromisoformat(str(document["review_date"]))
+            for path in sorted((ROOT / "research" / "sources").glob("*.yaml"))
+            if isinstance(
+                (document := yaml.safe_load(path.read_text(encoding="utf-8"))),
+                dict,
+            )
+            and document.get("review_date") is not None
+        ]
+    except ValueError:
+        fail("agent model catalog and source review dates must be ISO dates")
+    # The routing catalog must post-date the evidence catalog it relies on and
+    # stay within its declared maximum review age.
+    if source_review_dates and catalog_reviewed_at < max(source_review_dates):
+        fail("agent model catalog predates the newest structured source review")
+    maximum_age = routing.get("catalog_max_age_days")
+    if (
+        not isinstance(maximum_age, int)
+        or isinstance(maximum_age, bool)
+        or maximum_age < 1
+        or (date.today() - catalog_reviewed_at).days > maximum_age
+    ):
+        fail("agent model catalog review is stale under catalog_max_age_days")
     deprecated = {"gpt-5.2", "gpt-5.3-codex"}
     for provider in ("codex", "claude"):
         catalog = routing.get("providers", {}).get(provider, {})

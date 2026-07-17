@@ -9,14 +9,15 @@
     "paper_capital": "virtual_only",
     "research_capital": 0
   },
-  "policy_hash": "d4f248c131c6831b29c819dcb5126794c349f9e5f0de45eb0f3bf3faca915731",
+  "policy_hash": "1c0e9a238c0092085b20da7034398aed6ff5b01e339e650dfe576410c38fcf04",
   "policy_id": "risk-policy-v1-crypto_intraday",
   "policy_version": "risk-policy-v1",
   "promotion_thresholds": {
     "drawdown": "max_historical_drawdown_le_2x_expected_annualized_net_return_or_risk_officer_exception",
     "holdout_latest_fraction": 0.2,
     "maximum_pbo": 0.1,
-    "minimum_dsr_or_psr": "positive_vs_zero_after_multiple_tests",
+    "maximum_reality_check_pvalue": 0.1,
+    "minimum_dsr": 0.95,
     "minimum_history_months_screen": 12,
     "minimum_oos_net_sharpe": 1.0,
     "minimum_trades_4h_plus": 100,
@@ -27,7 +28,14 @@
       "fees_x1_5",
       "slippage_x2",
       "latency_x2",
-      "fill_rate_x0_7"
+      "depth_x0_5",
+      "depth_x0_25",
+      "maker_fill_probability_x0_5",
+      "funding_worst_decile",
+      "exchange_outage",
+      "missing_interval",
+      "correlated_gap",
+      "forced_deleverage"
     ]
   },
   "schema_version": 2,
@@ -46,6 +54,13 @@
     "latency_multiple": 2.0,
     "maker_fill_probability_multiple": 0.5,
     "scenarios": [
+      "fees_x1_5",
+      "slippage_x2",
+      "latency_x2",
+      "depth_x0_5",
+      "depth_x0_25",
+      "maker_fill_probability_x0_5",
+      "funding_worst_decile",
       "exchange_outage",
       "missing_interval",
       "correlated_gap",

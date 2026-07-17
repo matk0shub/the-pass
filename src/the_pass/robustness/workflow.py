@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import os
 from datetime import datetime, timezone
@@ -10,7 +11,10 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+import yaml
+
 from the_pass.data.contracts import CanonicalEvent, stable_fingerprint
+from the_pass.ledger import append_robustness_registration, read_ledger_entries
 from the_pass.strategy_runtime import (
     parse_execution_config,
     parse_strategy_descriptor,
@@ -21,11 +25,123 @@ from .statistics import (
     cscv_pbo,
     deflated_sharpe_ratio,
     effective_sample_size,
+    mean_difference_permutation_pvalue,
     probabilistic_sharpe_ratio_effective,
     purged_walk_forward_splits,
     reality_check,
     select_train_winner,
 )
+from .stress import (
+    MANDATORY_STRESS_SCENARIOS,
+    run_stress_suite,
+    stress_parameters_from_cost_waterfall,
+)
+
+
+DEFAULT_RISK_POLICY_PATH = (
+    Path(__file__).resolve().parents[1] / "policies" / "risk-policies.v1.yaml"
+)
+NULL_MEAN_TOLERANCE = 1e-12
+
+
+def _portable_path(path: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
+def _promotion_thresholds(policy_path: Path = DEFAULT_RISK_POLICY_PATH) -> dict[str, Any]:
+    policy_bytes = policy_path.read_bytes()
+    document = yaml.safe_load(policy_bytes)
+    thresholds = document["asset_classes"]["crypto_intraday"]
+    result = {
+        "maximum_pbo": float(thresholds["maximum_pbo"]),
+        "minimum_dsr": float(thresholds["minimum_dsr"]),
+        "maximum_reality_check_pvalue": float(
+            thresholds["maximum_reality_check_pvalue"]
+        ),
+        "policy_sha256": hashlib.sha256(policy_bytes).hexdigest(),
+    }
+    if any(
+        not 0 <= value <= 1
+        for key, value in result.items()
+        if key != "policy_sha256"
+    ):
+        raise ValueError("promotion thresholds must be probabilities in [0, 1]")
+    return result
+
+
+def _validate_null_variant(
+    variants: Sequence[Mapping[str, Any]],
+    *,
+    null_index: int,
+    reference_index: int,
+) -> None:
+    null = variants[null_index]
+    if null.get("role") != "null" or null.get("kind") not in {
+        "flat",
+        "seeded_random",
+    }:
+        raise ValueError(
+            "null variant must declare role=null and kind=flat or seeded_random"
+        )
+    if null["kind"] == "seeded_random":
+        seed = null.get("seed")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise ValueError("seeded_random null variant requires an integer seed")
+        metadata = {"role", "kind", "seed"}
+        overlap = (set(null) - metadata) & (set(variants[reference_index]) - metadata)
+        if overlap:
+            raise ValueError(
+                "seeded_random null variant must not share strategy keys with the reference variant: "
+                + ", ".join(sorted(overlap))
+            )
+
+
+def _null_structure_evidence(
+    variant: Mapping[str, Any], cells: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    kind = str(variant["kind"])
+    if kind == "flat":
+        cell_means = [
+            sum(float(value) for value in cell["periodic_returns"])
+            / len(cell["periodic_returns"])
+            for cell in cells
+            if cell["status"] == "complete" and cell["periodic_returns"]
+        ]
+        diagnostic_passed = bool(cell_means) and len(cell_means) == len(cells) and all(
+            abs(value) <= NULL_MEAN_TOLERANCE for value in cell_means
+        )
+        passed = bool(cells) and all(
+            cell["status"] == "complete"
+            and bool(cell["periodic_returns"])
+            and all(float(value) == 0.0 for value in cell["periodic_returns"])
+            for cell in cells
+        )
+        return {
+            "status": "pass" if passed else "blocked",
+            "check": "every_complete_cell_periodic_return_exactly_zero",
+            "tolerance": 0.0,
+            "diagnostic": {
+                "check": "each_cell_mean_net_return_near_zero",
+                "tolerance": NULL_MEAN_TOLERANCE,
+                "status": "pass" if diagnostic_passed else "blocked",
+            },
+            "limitation": "the tolerance check is diagnostic only; promotion requires every periodic return to equal exactly 0.0",
+        }
+    return {
+        "status": "blocked",
+        "check": "seed_registered_and_strategy_keys_disjoint_from_reference",
+        "tolerance": None,
+        "diagnostic": {
+            "check": "registered_seed_and_disjoint_strategy_keys",
+            "tolerance": None,
+            "status": "pass",
+        },
+        "limitation": "seeded_random nulls are diagnostic only and cannot support promotion until a trusted framework-side generator exists",
+    }
 
 
 def _persist_registration(path: Path, registration: Mapping[str, Any]) -> None:
@@ -220,6 +336,9 @@ def run_strategy_sweep(
     embargo: int = 0,
     null_variant_index: int | None = None,
     stress_results: Sequence[Mapping[str, Any]] = (),
+    ledger_path: Path | None = None,
+    source_package_path: Path | None = None,
+    policy_path: Path = DEFAULT_RISK_POLICY_PATH,
     runtime_mode: str = "trusted_local",
     sandbox_launcher: Path | None = None,
     sandbox_policy: Path | None = None,
@@ -239,6 +358,11 @@ def run_strategy_sweep(
         raise ValueError("null_variant_index is outside the preregistered variants")
     if null_variant_index == selected_index:
         raise ValueError("reference variant must differ from the null baseline")
+    _validate_null_variant(
+        variants,
+        null_index=null_variant_index,
+        reference_index=selected_index,
+    )
 
     validation_mode, folds = _normalized_folds(
         rows,
@@ -275,6 +399,37 @@ def run_strategy_sweep(
         "registration_fingerprint": stable_fingerprint(registration_core),
     }
     _persist_registration(registration_path, registration)
+    ledger_registration = None
+    attempt_count = 1
+    if ledger_path is not None:
+        ledger_result = append_robustness_registration(
+            ledger_path,
+            events_fingerprint=registration["events_fingerprint"],
+            descriptor_fingerprint=registration["descriptor_fingerprint"],
+            registration_fingerprint=registration["registration_fingerprint"],
+            variant_count=len(variants),
+            recorded_at=created_at,
+        )
+        ledger_registration = {
+            "ledger_path": _portable_path(ledger_path),
+            "entry_hash": ledger_result.entry["entry_hash"],
+            "attempt": ledger_result.entry["attempt"],
+        }
+        attempt_count = int(ledger_result.entry["attempt"])
+        effective_trial_count = sum(
+            int(entry["variant_count"])
+            for entry in read_ledger_entries(ledger_path.resolve())
+            if entry.get("entry_kind") == "robustness_registration"
+            and entry.get("events_fingerprint") == registration["events_fingerprint"]
+            and entry.get("descriptor_fingerprint")
+            == registration["descriptor_fingerprint"]
+        )
+    else:
+        effective_trial_count = len(variants)
+    thresholds = _promotion_thresholds(policy_path)
+    packaged_policy_sha256 = hashlib.sha256(
+        DEFAULT_RISK_POLICY_PATH.read_bytes()
+    ).hexdigest()
 
     initial_cash = Decimal(str(execution["initial_cash"]))
     cells: list[dict[str, Any]] = []
@@ -410,7 +565,10 @@ def run_strategy_sweep(
         "reality_check": {
             "reality_check_pvalue": 1.0,
             "spa_pvalue": 1.0,
+            "block_length": 1,
         },
+        "thresholds": thresholds,
+        "effective_trial_count": effective_trial_count,
     }
     oos_matrix: list[list[float]] = []
     if complete_statistics:
@@ -440,12 +598,15 @@ def run_strategy_sweep(
                 selected_oos_returns,
                 trial_sharpes=trial_sharpes,
                 effective_observations=sample["effective_observations"],
+                effective_trial_count=effective_trial_count,
             ),
             "reality_check": reality_check(
                 oos_matrix,
                 bootstrap_samples=500,
                 seed=7,
             ),
+            "thresholds": thresholds,
+            "effective_trial_count": effective_trial_count,
         }
 
     selected_mean = (
@@ -461,9 +622,28 @@ def run_strategy_sweep(
     worst_neighbor = (
         min(neighbor_test_returns) if neighbor_test_returns else None
     )
+    null_cells = [
+        cell for cell in cells if cell["variant_index"] == null_variant_index
+    ]
+    null_structure = _null_structure_evidence(
+        variants[null_variant_index], null_cells
+    )
+    null_test = (
+        mean_difference_permutation_pvalue(
+            selected_oos_returns,
+            null_oos_returns,
+            samples=2000,
+            seed=7,
+        )
+        if complete_statistics
+        else {"pvalue": 1.0, "block_length": 1}
+    )
+    null_pvalue = float(null_test["pvalue"])
     null_status = (
         "pass"
-        if complete_statistics and selected_mean > baseline_mean
+        if complete_statistics
+        and null_structure["status"] == "pass"
+        and null_pvalue <= 0.10
         else "blocked"
     )
     stability_status = (
@@ -474,15 +654,50 @@ def run_strategy_sweep(
         and worst_neighbor > 0
         else "blocked"
     )
-    normalized_stress = [
-        {
-            "scenario": str(row["scenario"]),
-            "status": str(row["status"]),
-            "net_pnl": float(row["net_pnl"]),
-            "summary": str(row["summary"]),
+    stress_evidence = None
+    if source_package_path is not None:
+        cost_path = source_package_path.resolve() / "cost_waterfall.json"
+        cost_waterfall = json.loads(cost_path.read_text(encoding="utf-8"))
+        if not isinstance(cost_waterfall, Mapping):
+            raise ValueError("source package cost_waterfall must be an object")
+        derived_stress = run_stress_suite(
+            stress_parameters_from_cost_waterfall(
+                cost_waterfall, selected_oos_returns
+            )
+        )
+        normalized_stress = [
+            {
+                key: row[key]
+                for key in (
+                    "scenario",
+                    "status",
+                    "net_pnl",
+                    "summary",
+                    "inputs_source",
+                    "formula",
+                )
+            }
+            for row in derived_stress
+        ]
+        stress_evidence = {
+            "source_package_path": _portable_path(source_package_path),
+            "source_package_id": source_package_id,
+            "cost_waterfall_sha256": hashlib.sha256(
+                cost_path.read_bytes()
+            ).hexdigest(),
         }
-        for row in stress_results
-    ]
+    else:
+        normalized_stress = [
+            {
+                "scenario": str(row["scenario"]),
+                "status": str(row.get("status", "pass" if row.get("pass") else "blocked")),
+                "net_pnl": float(row["net_pnl"]),
+                "summary": str(row.get("summary", "caller-supplied diagnostic stress")),
+                "inputs_source": "caller",
+                "formula": str(row.get("formula", "caller_supplied")),
+            }
+            for row in stress_results
+        ]
     all_runtime_promotional = not failed and all(
         cell["runtime_promotion_eligible"] for cell in cells
     )
@@ -491,10 +706,23 @@ def run_strategy_sweep(
         and complete_statistics
         and sample["effective_observations"] >= 30
         and parsed_execution.schema_version == 2
+        and statistics["pbo"]["pbo"] <= thresholds["maximum_pbo"]
+        and statistics["dsr"] >= thresholds["minimum_dsr"]
+        and statistics["reality_check"]["reality_check_pvalue"]
+        <= thresholds["maximum_reality_check_pvalue"]
+        and thresholds["policy_sha256"] == packaged_policy_sha256
+        and variants[null_variant_index].get("kind") == "flat"
         and null_status == "pass"
         and stability_status == "pass"
         and bool(normalized_stress)
+        and set(MANDATORY_STRESS_SCENARIOS)
+        <= {row["scenario"] for row in normalized_stress}
         and all(row["status"] == "pass" for row in normalized_stress)
+        and all(
+            row["inputs_source"] == "cost_waterfall"
+            for row in normalized_stress
+        )
+        and ledger_registration is not None
         and all_runtime_promotional
     )
     first_holdout = rows[folds[0]["test_start"]]
@@ -514,7 +742,20 @@ def run_strategy_sweep(
         "id": f"robustness-{parsed_descriptor.strategy_id}",
         "created_at": created_at or timestamp(rows[-1].receive_time_ns),
         "source_package_id": source_package_id,
+        "evidence_binding": "unverified_cells",
         "registration": registration,
+        "ledger_registration": {
+            **(
+                ledger_registration
+                if ledger_registration is not None
+                else {
+                    "ledger_path": None,
+                    "entry_hash": None,
+                    "attempt": attempt_count,
+                }
+            ),
+            "effective_trial_count": effective_trial_count,
+        },
         "status": "blocked" if failed or alignment_failed else "complete",
         "cells": cells,
         "fold_results": fold_results,
@@ -541,6 +782,10 @@ def run_strategy_sweep(
             "status": null_status,
             "selected_mean_return": selected_mean,
             "baseline_mean_return": baseline_mean,
+            "pvalue": null_pvalue,
+            "block_length": int(null_test["block_length"]),
+            "test": "paired_one_sided_circular_block_sign_flip_mean_difference",
+            "structure": null_structure,
             "summary": (
                 "train-selected OOS returns exceed the preregistered aligned null"
                 if null_status == "pass"
@@ -548,6 +793,7 @@ def run_strategy_sweep(
             ),
         },
         "stress_results": normalized_stress,
+        "stress_evidence": stress_evidence,
         "parameter_stability": {
             "status": stability_status,
             "neighbor_indices": sorted(

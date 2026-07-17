@@ -13,6 +13,8 @@
   },
   {
     "disabled": true,
+    "kind": "flat",
+    "role": "null",
     "lookback": 10
   }
 ]

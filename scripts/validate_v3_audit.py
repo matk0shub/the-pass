@@ -29,7 +29,12 @@ REPRODUCED_PACKAGE_FILES = {
 }
 
 from the_pass.data.contracts import stable_fingerprint  # noqa: E402
+from the_pass.attestation import (  # noqa: E402
+    verify_reviewer_attestation,
+    verify_trusted_reviewer_registry,
+)
 from the_pass.ledger import build_run_entry  # noqa: E402
+from the_pass.robustness import MANDATORY_STRESS_SCENARIOS  # noqa: E402
 from the_pass.validator import validate_artifact  # noqa: E402
 
 
@@ -49,6 +54,11 @@ def main() -> int:
         "stats_audit.json",
         "execution_audit.json",
         "reproduction_report.json",
+        "reviewer_attestation.research_gate.json",
+        "reviewer_key_registry.research_gate.json",
+        "reviewer_attestation.paper_gate.json",
+        "reviewer_key_registry.paper_gate.json",
+        "reviewer_identity_status.json",
     }
     missing = [name for name in sorted(required) if not (root / name).is_file()]
     if missing:
@@ -66,6 +76,7 @@ def main() -> int:
     robustness_validation = validate_artifact(
         root / "robustness_report.json",
         artifact_type="robustness_report",
+        ledger_path=root / "registration-ledger.jsonl",
     )
     if not robustness_validation.ok:
         fail("V3 robustness_report.v3 does not validate")
@@ -88,19 +99,7 @@ def main() -> int:
     if len(robustness["fold_results"]) < 4 or robustness["failed_cells"]:
         fail("V3 train-select-test matrix is incomplete")
 
-    required_stress = {
-        "fees_x1_5",
-        "slippage_x2",
-        "latency_x2",
-        "depth_x0_5",
-        "depth_x0_25",
-        "maker_fill_probability_x0_5",
-        "funding_worst_decile",
-        "exchange_outage",
-        "missing_interval",
-        "correlated_gap",
-        "forced_deleverage",
-    }
+    required_stress = set(MANDATORY_STRESS_SCENARIOS)
     stress = json.loads((root / "stress_report.json").read_text(encoding="utf-8"))["scenarios"]
     if {item["scenario"] for item in stress} != required_stress:
         fail("V3 stress scenario coverage differs from policy")
@@ -120,15 +119,78 @@ def main() -> int:
         fail("V3 risk report must bind exact policy and block the synthetic candidate")
 
     reviewers = set()
-    for name in ("stats_audit.json", "execution_audit.json"):
+    signer_keys = set()
+    operator_registry = next(
+        (
+            path
+            for path in (
+                ROOT / "config" / "reviewer-registry.yaml",
+                ROOT / "config" / "reviewer-registry",
+            )
+            if path.exists()
+        ),
+        None,
+    )
+    trusted_metadata = []
+    for name, gate, reviewer in (
+        ("stats_audit.json", "research_gate", "fixture_stats_auditor"),
+        ("execution_audit.json", "paper_gate", "fixture_execution_skeptic"),
+    ):
         audit = json.loads((root / name).read_text(encoding="utf-8"))
         reviewers.add(audit["reviewer"])
         if audit["verdict"] != "blocked" or not any(item["blocks_promotion"] for item in audit["findings"]):
             fail(f"V3 independent audit did not block synthetic promotion: {name}")
         if any(item["severity"] in {"P0", "P1"} and item["status"] in {"open", "confirmed"} for item in audit["findings"]):
             fail(f"V3 framework gate has unresolved P0/P1 finding: {name}")
-    if reviewers != {"stats_auditor", "execution_skeptic"}:
+        attestation, blockers = verify_reviewer_attestation(
+            root / f"reviewer_attestation.{gate}.json",
+            gate=gate,
+            package_id=expected_package_id,
+            reviewer=reviewer,
+        )
+        if blockers or attestation is None:
+            fail(f"V3 reviewer attestation does not verify: {name}: {'; '.join(blockers)}")
+        if attestation["evidence"]["task_sha256"] != hashlib.sha256(
+            (root / name).read_bytes()
+        ).hexdigest():
+            fail(f"V3 reviewer attestation does not bind audit bytes: {name}")
+        if operator_registry is not None:
+            metadata, trust_blockers = verify_trusted_reviewer_registry(
+                operator_registry,
+                package_dir=root,
+                attestation=attestation,
+            )
+            if trust_blockers or not metadata["trusted"]:
+                fail(
+                    "V3 reviewer attestation is not authorized by the operator registry: "
+                    + name
+                    + ": "
+                    + "; ".join(trust_blockers)
+                )
+            trusted_metadata.append(metadata)
+        signer_keys.add(attestation["signer"]["public_key"])
+    if reviewers != {"fixture_stats_auditor", "fixture_execution_skeptic"}:
         fail("V3 independent reviewer roles are incomplete")
+    if len(signer_keys) != 2:
+        fail("V3 reviewer attestations must use distinct Ed25519 public keys")
+    identity_status = json.loads(
+        (root / "reviewer_identity_status.json").read_text(encoding="utf-8")
+    )
+    if operator_registry is None:
+        expected_statement = (
+            "fixture-grade attestations — reviewer independence NOT established"
+        )
+        if (
+            identity_status.get("grade") != "fixture"
+            or identity_status.get("reviewer_independence_established") is not False
+            or identity_status.get("statement") != expected_statement
+        ):
+            fail("V3 fixture-grade reviewer status is missing or overstated")
+        independence_statement = expected_statement
+    else:
+        independence_statement = (
+            "operator-registry attestations verified — reviewer independence established"
+        )
 
     reproduction = json.loads((root / "reproduction_report.json").read_text(encoding="utf-8"))
     if reproduction["status"] != "pass" or reproduction["mismatches"]:
@@ -151,7 +213,10 @@ def main() -> int:
     )
     if candidate_verdict["verdict"] != "blocked":
         fail("V3 must not promote the synthetic candidate")
-    print("V3 audit validation passed: robustness complete, candidate correctly blocked")
+    print(
+        "V3 audit validation passed: robustness complete, candidate correctly blocked; "
+        + independence_statement
+    )
     return 0
 
 

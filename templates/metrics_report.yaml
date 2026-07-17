@@ -37,7 +37,7 @@ gross_metrics:
   turnover: 0
   average_holding_period: 0
   expected_shortfall: 0
-  capacity_estimate: 0
+  capacity_estimate: null
 
 net_metrics:
   pnl: 0
@@ -57,9 +57,11 @@ net_metrics:
   turnover: 0
   average_holding_period: 0
   expected_shortfall: 0
-  capacity_estimate: 0
+  capacity_estimate: null
 
-not_applicable_reasons: {}
+not_applicable_reasons:
+  gross_metrics.capacity_estimate: Not estimated without market depth, participation, and impact evidence.
+  net_metrics.capacity_estimate: Not estimated without market depth, participation, and impact evidence.
 
 robustness:
   null_baseline_result: Example diagnostic has no edge claim.

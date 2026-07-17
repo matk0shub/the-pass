@@ -2,19 +2,25 @@ schema_version: 3
 id: example-blocked-train-select-test
 created_at: "2026-07-16T00:00:00Z"
 source_package_id: null
+evidence_binding: unverified_cells
 registration:
   schema_version: 3
   descriptor_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
   strategy_source_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
   execution_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
   events_fingerprint: "0000000000000000000000000000000000000000000000000000000000000000"
-  variants: [{lookback: 10}, {role: null}]
+  variants: [{lookback: 10}, {role: "null", kind: flat}]
   reference_variant_index: 0
   null_variant_index: 1
   selection_metric: net_return
   tie_break: lowest_variant_index
   selection_policy: Select each fold only from complete train-cell net returns.
-  registration_fingerprint: "b70cb058fd81860d2414e22b99cf7248cc6cdefd0e0710d6975a118b182eb84a"
+  registration_fingerprint: "7d7639f18b41be53f76041864f45dab605f92f73ef903d2bf2a31063c8247db5"
+ledger_registration:
+  ledger_path: null
+  entry_hash: null
+  attempt: 1
+  effective_trial_count: 2
 status: blocked
 cells:
   - {fold_id: 0, phase: train, variant_index: 0, status: failed, net_return: null, periodic_returns: [], result_fingerprint: null, runtime_promotion_eligible: false, execution_schema_version: 1, error_type: NotRun}
@@ -49,7 +55,9 @@ statistics:
   pbo: {pbo: 1.0, combinations: 1, logits: [], selected_variants: []}
   psr: 0.0
   dsr: 0.0
-  reality_check: {reality_check_pvalue: 1.0, spa_pvalue: 1.0}
+  reality_check: {reality_check_pvalue: 1.0, spa_pvalue: 1.0, block_length: 1}
+  thresholds: {maximum_pbo: 0.10, minimum_dsr: 0.95, maximum_reality_check_pvalue: 0.10, policy_sha256: "512280096653d047ccd946eecd8bd545ac9de6c7d9ca7ab2385fc8e9a0a0996e"}
+  effective_trial_count: 2
 validation:
   mode: diagnostic_splits
   purge_observations: 0
@@ -67,12 +75,22 @@ null_baseline:
   status: blocked
   selected_mean_return: 0.0
   baseline_mean_return: 0.0
+  pvalue: 1.0
+  block_length: 1
+  test: paired_one_sided_circular_block_sign_flip_mean_difference
+  structure:
+    status: blocked
+    check: every_complete_cell_periodic_return_exactly_zero
+    tolerance: 0.0
+    diagnostic: {check: each_cell_mean_net_return_near_zero, tolerance: 1.0e-12, status: blocked}
+    limitation: the tolerance check is diagnostic only; promotion requires every periodic return to equal exactly 0.0
   summary: No train or OOS evidence has been measured.
 stress_results: []
+stress_evidence: null
 parameter_stability:
   status: blocked
   neighbor_indices: []
   worst_neighbor_return: null
   summary: No selected configuration has measured OOS neighbors.
 promotion_eligible: false
-report_fingerprint: "480ba4f0d6cc160b37e1251ecd39325cb51a0d4b16ffbe2ecd501a75f5d0b1cf"
+report_fingerprint: "52056e97c0469320c75e553ad9e7b78f3d473c270f159945a8bcae84431b9254"

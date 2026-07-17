@@ -1,0 +1,14 @@
+{
+  "grade": "fixture_only_public_private_keys",
+  "warning": "Deterministic test keys. Never trust these identities for reviewer independence or production gates.",
+  "keys": {
+    "fixture_execution_skeptic": {
+      "private_key": "6LbeY3iPKDiE/HHvXnWyb6dRSIl3NHa3/TSZ59pQdvk=",
+      "public_key": "hjLKuqqcRoHlPMW/77pyvGDx4xK7QYYF9tbhkO2s1LI="
+    },
+    "fixture_stats_auditor": {
+      "private_key": "iq5X88+DzG7j+nwfnpL6qyVuGOsMO2UjEXl8SF7V28I=",
+      "public_key": "W2uAbvINzPOTdMWzGnd152tUFNOw/mLOvp7EqpbbvK8="
+    }
+  }
+}

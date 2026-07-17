@@ -626,6 +626,15 @@ class StrategyRuntimeTests(unittest.TestCase):
     def test_preregistered_strategy_sweep_executes_every_cell(self) -> None:
         events = generate_synthetic_bars(instrument_id="BTCUSDT", profile="trend")
         registration = self.root / "sweep.registration.json"
+        sweep_source = VALID_STRATEGY.replace(
+            'return Strategy(config["quantity"])',
+            'return Strategy("0" if config.get("kind") == "flat" else config["quantity"])',
+        ).replace(
+            "    def on_event(self, event, context):\n        if context.event_index != 0:",
+            "    def on_event(self, event, context):\n        if self.quantity == 0:\n            return []\n        if context.event_index != 0:",
+        )
+        (self.root / "strategy.py").write_text(sweep_source, encoding="utf-8")
+        variants = [{"quantity": "1"}, {"role": "null", "kind": "flat"}]
         from the_pass.robustness import workflow
 
         original = workflow.run_strategy_verified
@@ -642,7 +651,7 @@ class StrategyRuntimeTests(unittest.TestCase):
                 events,
                 descriptor=self.descriptor,
                 execution=self.execution,
-                variants=[{"quantity": "1"}, {"quantity": "2"}],
+                variants=variants,
                 splits=None,
                 selected_index=0,
                 registration_path=registration,
@@ -670,7 +679,7 @@ class StrategyRuntimeTests(unittest.TestCase):
                     events,
                     descriptor=self.descriptor,
                     execution=self.execution,
-                    variants=[{"quantity": "1"}, {"quantity": "2"}],
+                    variants=variants,
                     splits=None,
                     selected_index=0,
                     registration_path=registration,
@@ -683,9 +692,9 @@ class StrategyRuntimeTests(unittest.TestCase):
 
         previous_source_hash = registration_document["strategy_source_sha256"]
         (self.root / "strategy.py").write_text(
-            VALID_STRATEGY.replace(
-                "return Strategy(config[\"quantity\"])",
-                "return Strategy(str(int(config[\"quantity\"]) + 1))",
+            sweep_source.replace(
+                'else config["quantity"]',
+                'else str(int(config["quantity"]) + 1)',
             ),
             encoding="utf-8",
         )
@@ -694,7 +703,7 @@ class StrategyRuntimeTests(unittest.TestCase):
             events,
             descriptor=self.descriptor,
             execution=self.execution,
-            variants=[{"quantity": "1"}, {"quantity": "2"}],
+            variants=variants,
             splits=None,
             selected_index=0,
             registration_path=changed_registration,

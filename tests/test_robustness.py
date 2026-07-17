@@ -16,6 +16,7 @@ from the_pass.engine.contracts import Fill, SimulatedIntent
 from the_pass.engine.portfolio import AccountingPortfolio
 from the_pass.risk import VersionedRiskPolicy, build_risk_policy_artifact, build_risk_report
 from the_pass.robustness import (
+    MANDATORY_STRESS_SCENARIOS,
     StressParameters,
     block_bootstrap_means,
     cscv_pbo,
@@ -28,6 +29,7 @@ from the_pass.robustness import (
     run_stress_suite,
     select_train_winner,
     sensitivity_report,
+    stress_parameters_from_cost_waterfall,
 )
 from the_pass.validator import validate_artifact
 
@@ -64,7 +66,13 @@ class StatisticalTests(unittest.TestCase):
         regimes = regime_statistics(values, ["trend" if index % 2 else "range" for index in range(len(values))])
         self.assertEqual(set(regimes), {"range", "trend"})
         check = reality_check([[value, -value, value / 2] for value in values], bootstrap_samples=100, seed=7)
-        self.assertTrue(all(0 <= value <= 1 for value in check.values()))
+        self.assertTrue(
+            all(
+                0 <= check[key] <= 1
+                for key in ("reality_check_pvalue", "spa_pvalue")
+            )
+        )
+        self.assertEqual(check["block_length"], math.ceil(len(values) ** (1 / 3)))
         sensitivity = sensitivity_report(
             [{"lookback": 5, "sharpe": 0.9}, {"lookback": 10, "sharpe": 1.0}, {"lookback": 20, "sharpe": 0.8}],
             parameter="lookback",
@@ -104,22 +112,29 @@ class StressAndRiskTests(unittest.TestCase):
             )
         )
         names = {result["scenario"] for result in results}
-        self.assertTrue(
+        self.assertEqual(set(MANDATORY_STRESS_SCENARIOS), names)
+
+    def test_dominant_impact_cost_blocks_scenarios(self) -> None:
+        parameters = stress_parameters_from_cost_waterfall(
             {
-                "fees_x1_5",
-                "slippage_x2",
-                "latency_x2",
-                "depth_x0_5",
-                "depth_x0_25",
-                "maker_fill_probability_x0_5",
-                "funding_worst_decile",
-                "exchange_outage",
-                "missing_interval",
-                "correlated_gap",
-                "forced_deleverage",
-            }
-            <= names
+                "gross_pnl": 10.0,
+                "costs": {
+                    "fees": 0.0,
+                    "spread": 0.0,
+                    "slippage": 0.0,
+                    "funding": 0.0,
+                    "impact": 11.0,
+                    "borrow": 0.0,
+                    "roll": 0.0,
+                    "rejects_or_missed_fills": 0.0,
+                },
+            },
+            [0.01, -0.005, 0.01, 0.005],
         )
+        results = run_stress_suite(parameters)
+        self.assertTrue(results)
+        self.assertTrue(all(row["status"] == "blocked" for row in results))
+        self.assertTrue(all(row["net_pnl"] < 0 for row in results))
 
     def test_policy_hash_is_enforced_and_strategy_cannot_exceed_limit(self) -> None:
         artifact = build_risk_policy_artifact("crypto_intraday")

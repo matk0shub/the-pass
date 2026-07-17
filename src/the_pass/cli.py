@@ -107,6 +107,7 @@ from .validator import (
     validate_artifact,
     validate_package,
     load_document,
+    repo_root_from,
 )
 
 
@@ -291,6 +292,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument(
         "--schema-dir", type=Path, help="Override schema directory."
     )
+    validate_parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER_PATH)
     validate_parser.add_argument(
         "--format", choices=("text", "json"), default="text", help="Output format."
     )
@@ -302,6 +304,7 @@ def build_parser() -> argparse.ArgumentParser:
     package_parser.add_argument(
         "--schema-dir", type=Path, help="Override schema directory."
     )
+    package_parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER_PATH)
     package_parser.add_argument(
         "--format", choices=("text", "json"), default="text", help="Output format."
     )
@@ -505,6 +508,9 @@ def build_parser() -> argparse.ArgumentParser:
     robustness_sweep.add_argument("--embargo", type=int, default=0)
     robustness_sweep.add_argument("--null-variant-index", type=int)
     robustness_sweep.add_argument("--stress-results", type=Path)
+    robustness_sweep.add_argument(
+        "--ledger", type=Path, default=DEFAULT_LEDGER_PATH
+    )
     robustness_sweep.add_argument("--selected-index", type=int, required=True)
     robustness_sweep.add_argument("--workspace-root", type=Path, default=Path.cwd())
     robustness_sweep.add_argument("--timeout-seconds", type=float, default=60.0)
@@ -907,6 +913,12 @@ def build_parser() -> argparse.ArgumentParser:
     gate_attest.add_argument("--stdout-evidence", type=Path)
     gate_attest.add_argument("--stderr-evidence", type=Path)
     gate_attest.add_argument("--key-registry", type=Path, required=True)
+    gate_attest.add_argument(
+        "--ledger",
+        type=Path,
+        default=DEFAULT_LEDGER_PATH,
+        help="Operator-controlled robustness registration ledger.",
+    )
     gate_attest.add_argument("--created-at")
     gate_attest.add_argument("--output", type=Path, required=True)
     gate_attest.add_argument(
@@ -972,8 +984,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "validate":
+        operator_ledger = (
+            args.ledger.resolve()
+            if args.ledger.is_absolute()
+            else (repo_root_from(Path(__file__)) / args.ledger).resolve()
+        )
         result = validate_artifact(
-            args.artifact, schema_dir=args.schema_dir, artifact_type=args.type
+            args.artifact,
+            schema_dir=args.schema_dir,
+            artifact_type=args.type,
+            ledger_path=operator_ledger,
         )
         artifact_type = result.artifact_type or "artifact"
         print_result(
@@ -985,7 +1005,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.ok else 1
 
     if args.command == "validate-package":
-        result = validate_package(args.package, schema_dir=args.schema_dir)
+        operator_ledger = (
+            args.ledger.resolve()
+            if args.ledger.is_absolute()
+            else (repo_root_from(Path(__file__)) / args.ledger).resolve()
+        )
+        result = validate_package(
+            args.package,
+            schema_dir=args.schema_dir,
+            ledger_path=operator_ledger,
+        )
         print_result(
             result,
             output_format=args.format,
@@ -1451,6 +1480,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "robustness":
         try:
             if args.robustness_command == "sweep":
+                operator_ledger = (
+                    args.ledger.resolve()
+                    if args.ledger.is_absolute()
+                    else (repo_root_from(Path(__file__)) / args.ledger).resolve()
+                )
                 descriptor = load_document(args.descriptor)
                 execution = load_document(args.execution)
                 variants = json.loads(args.variants.read_text(encoding="utf-8"))
@@ -1505,13 +1539,17 @@ def main(argv: list[str] | None = None) -> int:
                     embargo=args.embargo,
                     null_variant_index=args.null_variant_index,
                     stress_results=stress_results,
+                    ledger_path=operator_ledger,
+                    source_package_path=args.source_package,
                     runtime_mode=args.runtime_mode,
                     sandbox_launcher=args.sandbox_launcher,
                     sandbox_policy=args.sandbox_policy,
                 )
                 write_json_atomic(args.output, document)
                 validation = validate_artifact(
-                    args.output, artifact_type="robustness_report"
+                    args.output,
+                    artifact_type="robustness_report",
+                    ledger_path=operator_ledger,
                 )
                 if not validation.ok:
                     details = "; ".join(
@@ -2183,7 +2221,14 @@ def main(argv: list[str] | None = None) -> int:
                     if args.stderr_evidence
                     else empty_hash,
                 }
-                package_id = build_run_entry(package_dir)["package_id"]
+                operator_ledger = (
+                    args.ledger.resolve()
+                    if args.ledger.is_absolute()
+                    else (repo_root_from(Path(__file__)) / args.ledger).resolve()
+                )
+                package_id = build_run_entry(
+                    package_dir, ledger_path=operator_ledger
+                )["package_id"]
                 registry_validation = validate_artifact(
                     args.key_registry, artifact_type="reviewer_key_registry"
                 )

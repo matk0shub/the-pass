@@ -188,11 +188,13 @@ class ReviewerAttestationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
-            prepare_paper_candidate(package)
+            operator_ledger = Path(tmp) / "ledger.jsonl"
+            prepare_paper_candidate(package, ledger_path=operator_ledger)
             missing = evaluate_gate(
                 package,
                 gate="research_gate",
                 reviewer="independent-auditor",
+                ledger_path=operator_ledger,
             )
             self.assertEqual(missing.exit_code, 2)
             public_registry = registry(reviewer="independent-auditor")
@@ -201,7 +203,9 @@ class ReviewerAttestationTests(unittest.TestCase):
             )
             trusted_registry = Path(tmp) / "trusted-reviewers.json"
             write_registry_snapshot(trusted_registry, public_registry)
-            package_id = build_run_entry(package)["package_id"]
+            package_id = build_run_entry(
+                package, ledger_path=operator_ledger
+            )["package_id"]
             wrong_evidence = create_reviewer_attestation(
                 gate="research_gate",
                 package_id=package_id,
@@ -223,6 +227,7 @@ class ReviewerAttestationTests(unittest.TestCase):
                 package,
                 gate="research_gate",
                 reviewer="independent-auditor",
+                ledger_path=operator_ledger,
                 trusted_registry_path=trusted_registry,
             )
             self.assertIn(
@@ -255,6 +260,7 @@ class ReviewerAttestationTests(unittest.TestCase):
                 package,
                 gate="research_gate",
                 reviewer="independent-auditor",
+                ledger_path=operator_ledger,
             )
             self.assertEqual(self_issued.exit_code, 2)
             self.assertIn(
@@ -266,6 +272,7 @@ class ReviewerAttestationTests(unittest.TestCase):
                     package,
                     gate="research_gate",
                     reviewer="independent-auditor",
+                    ledger_path=operator_ledger,
                     trusted_registry_path=trusted_registry,
                 )
             self.assertEqual(passed.exit_code, 0, passed.decision["blockers"])
@@ -274,7 +281,7 @@ class ReviewerAttestationTests(unittest.TestCase):
                 {"reviewer_attestation", "reviewer_key_registry"} <= evidence_types
             )
 
-            ledger = Path(tmp) / "receipts.jsonl"
+            ledger = operator_ledger
             decision_path = package / "gate_decision.research_gate.json"
             append_ledger_entry(ledger, package)
             write_gate_decision(decision_path, passed.decision)
@@ -304,7 +311,8 @@ class ReviewerAttestationTests(unittest.TestCase):
             root = Path(tmp)
             package = root / "package"
             shutil.copytree(EXAMPLE_PACKAGE, package)
-            prepare_paper_candidate(package)
+            operator_ledger = root / "ledger.jsonl"
+            prepare_paper_candidate(package, ledger_path=operator_ledger)
             private_path = root / "reviewer.key"
             registry_path = root / "reviewers.json"
             with redirect_stdout(io.StringIO()) as keygen_stdout:
@@ -377,6 +385,8 @@ class ReviewerAttestationTests(unittest.TestCase):
                         str(package / "findings.json"),
                         "--key-registry",
                         str(registry_path),
+                        "--ledger",
+                        str(operator_ledger),
                         "--created-at",
                         "2026-07-15T00:00:00Z",
                         "--output",
@@ -393,6 +403,7 @@ class ReviewerAttestationTests(unittest.TestCase):
                     package,
                     gate="research_gate",
                     reviewer="independent-auditor",
+                    ledger_path=operator_ledger,
                     trusted_registry_path=registry_path,
                 )
             self.assertEqual(evaluation.exit_code, 0, evaluation.decision["blockers"])

@@ -11,7 +11,7 @@
     "average_drawdown": 1.92291628295e-06,
     "average_holding_period": 260.0,
     "calmar": -4181.08652705,
-    "capacity_estimate": 1000000.0,
+    "capacity_estimate": null,
     "downside_volatility": 7.22844144628e-05,
     "drawdown_duration": 86.0,
     "expectancy": -0.00336842320025,
@@ -35,7 +35,7 @@
     "average_drawdown": 2.71929571396e-05,
     "average_holding_period": 260.0,
     "calmar": -4783.3461602,
-    "capacity_estimate": 1000000.0,
+    "capacity_estimate": null,
     "downside_volatility": 0.000820379510927,
     "drawdown_duration": 92.0,
     "expectancy": -0.0570313685542,
@@ -50,7 +50,10 @@
     "volatility": 0.000771300918232,
     "win_rate": 0.2
   },
-  "not_applicable_reasons": {},
+  "not_applicable_reasons": {
+    "gross_metrics.capacity_estimate": "not estimated without market depth, participation, and impact evidence",
+    "net_metrics.capacity_estimate": "not estimated without market depth, participation, and impact evidence"
+  },
   "robustness": {
     "dsr_or_psr": null,
     "null_baseline_result": "not evaluated until V3",
