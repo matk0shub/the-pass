@@ -427,7 +427,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "6506ff931b65bacbceedd63ff03259f58589c00fbc6a556b715f7dc9d52095c4",
+      "result_fingerprint": "042f33bbbeeed74186a3b400925ed17cdb545968ee6bff87ae6537885474a5b6",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -603,7 +603,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "68c22f05f1f99c20932d6637af835cde5b7e53612762b1802ed7c95b99073cb7",
+      "result_fingerprint": "e1f6862e92717004f3cd25dc05759fafabc5dc76b2a8b340e5114593f0778b42",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -1179,7 +1179,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "4dc65447004f12b4649ea40e109606ae6a001ec87f763cae718e963929496107",
+      "result_fingerprint": "7a74dc802f1adb7b89851fd41278628862d0845ac355f23faa07569365c2a458",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -1355,7 +1355,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "1b2f52c9d761248ed4694e5b74d4aa937512e703314bdfcab0e9552079e66962",
+      "result_fingerprint": "837783cbbfa0cc9447b9b3b0afbf59cc64208aab7efec6bb2b6937f162eea13e",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -2075,7 +2075,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "ced05c2b3b07caa59beea1ebae293bfa39237889f4bfeff046ceac3bca2171c4",
+      "result_fingerprint": "2bd056364d6883d4bc530501cdebea2b9b902e1cfa3b2f34a8865bd9af774e3f",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -2251,7 +2251,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "796ad8bc57a14008e2bd8d298aefad42097764cbc35e393caf7e7faf83da5d65",
+      "result_fingerprint": "760a5a6813046e6dc1906e24acd4ac61f5f623e12c768d09dc257c256c600444",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -3115,7 +3115,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "7392e1d93ffa3ebb20abd694bb6a8a396014c0c8294a7958fc142ffe3469bbc7",
+      "result_fingerprint": "240e4472a2db56a1f0729811f7a8433c77c946450ee670a729008cb9dd1a6e01",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -3291,7 +3291,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "3845f167f02e5115cc9ecd96ca87ab0c7a73a85bea877678e4cb4d5a311eca53",
+      "result_fingerprint": "a15b89c5c6e2e0e344a13c6a0463ca8715a329c1a9a087217c0af5e72d4df0f2",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -4299,7 +4299,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "13e55b3dff6e8c8062c1f0e9fd863440b7affa599463235b7167839ef4e9f68b",
+      "result_fingerprint": "d6c872b0b494650d536b0217f1412b4a2c08d40f3bf7ac4dd2131acf10a2005b",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -4475,7 +4475,7 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "8292eacc2d0cce1988f2d55f4b6bccecbb6c5b92760fbe54e0563a3d261c1bee",
+      "result_fingerprint": "83aec6f2ffabaf38ee59ad94b39e6a8885e844868a00429a6c3307b93eb6eed8",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -5627,7 +5627,7 @@
         0.0
       ],
       "phase": "train",
-      "result_fingerprint": "2153c9fc26053382bcb224a38970b8fcaae5f48239b93e3cf867c52ea68dc252",
+      "result_fingerprint": "5742b4afd9baa01201d43c79be7448e53c9c1bd08957e572f0ec0bd3d97f5163",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
@@ -5803,13 +5803,14 @@
         0.0
       ],
       "phase": "test",
-      "result_fingerprint": "5a304e78dc22eb38b54b62a3bcfc04ad68cab82063d8f7a4d72aa3d92631b86f",
+      "result_fingerprint": "9cf5c57b81ce9fa633cdf6c7f6a378cb71d1ef140e5a721d11919445a1132201",
       "runtime_promotion_eligible": false,
       "status": "complete",
       "variant_index": 3
     }
   ],
   "created_at": "2026-07-10T00:00:00Z",
+  "evidence_binding": "unverified_cells",
   "failed_cells": 0,
   "fold_results": [
     {
@@ -5850,11 +5851,31 @@
     }
   ],
   "id": "robustness-robustness_donchian_fixture_v1",
+  "ledger_registration": {
+    "attempt": 1,
+    "effective_trial_count": 4,
+    "entry_hash": "bbff4d97ae810dbc115078ca57380e140f8066be720b4dce1e0a8ba906fe14f7",
+    "ledger_path": "reports/v3/donchian_momentum/registration-ledger.jsonl"
+  },
   "null_baseline": {
     "baseline_mean_return": 0.0,
+    "block_length": 6,
+    "pvalue": 0.0004997501249375312,
     "selected_mean_return": 1.866664002373008e-05,
     "status": "pass",
+    "structure": {
+      "check": "every_complete_cell_periodic_return_exactly_zero",
+      "diagnostic": {
+        "check": "each_cell_mean_net_return_near_zero",
+        "status": "pass",
+        "tolerance": 1e-12
+      },
+      "limitation": "the tolerance check is diagnostic only; promotion requires every periodic return to equal exactly 0.0",
+      "status": "pass",
+      "tolerance": 0.0
+    },
     "summary": "train-selected OOS returns exceed the preregistered aligned null",
+    "test": "paired_one_sided_circular_block_sign_flip_mean_difference",
     "variant_index": 3
   },
   "oos_matrix": [
@@ -7026,7 +7047,7 @@
     "execution_fingerprint": "4022c08fc770095c4fcdb0ae1e433d24cef05912c3fa1347af8d7ae4f18d579f",
     "null_variant_index": 3,
     "reference_variant_index": 1,
-    "registration_fingerprint": "8b7644b175f99d412ec83b8948e65351ccec32870ee6e33fc7624e0aad11551e",
+    "registration_fingerprint": "bb0cafcf731d0f1b1893e0ab3f3b9222dceb5c403dbe92f3b617a925185a174d",
     "schema_version": 3,
     "selection_metric": "net_return",
     "selection_policy": "select each fold only from complete train-cell net returns",
@@ -7047,11 +7068,13 @@
       },
       {
         "disabled": true,
-        "lookback": 10
+        "kind": "flat",
+        "lookback": 10,
+        "role": "null"
       }
     ]
   },
-  "report_fingerprint": "7a42727d1a480011a9824f09d47175200b782170270ce534d37c0b29d4ea0a09",
+  "report_fingerprint": "9b4128578697638eba5d38cfd9378c0d545362c04ff74e70bcdeab792590c191",
   "sample": {
     "effective_observations": 170.65567444183264,
     "lag1_autocorrelation": 0.0588556227364115,
@@ -7252,9 +7275,10 @@
     3.4979637149059016e-05,
     -2.886025909061519e-05
   ],
-  "source_package_id": "pkg_589079523ded2c4a5f35e50f",
+  "source_package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
   "statistics": {
     "dsr": 0.9921852618361431,
+    "effective_trial_count": 4,
     "pbo": {
       "combinations": 70,
       "logits": [
@@ -7405,77 +7429,111 @@
     },
     "psr": 0.9999981793264403,
     "reality_check": {
+      "block_length": 6,
       "reality_check_pvalue": 0.001996007984031936,
       "spa_pvalue": 0.001996007984031936
+    },
+    "thresholds": {
+      "maximum_pbo": 0.1,
+      "maximum_reality_check_pvalue": 0.1,
+      "minimum_dsr": 0.95,
+      "policy_sha256": "512280096653d047ccd946eecd8bd545ac9de6c7d9ca7ab2385fc8e9a0a0996e"
     }
   },
   "status": "complete",
+  "stress_evidence": {
+    "cost_waterfall_sha256": "84c65cb577b80aec7726c1134f81accee5ae17e900143840305af8ecec71a1e3",
+    "source_package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
+    "source_package_path": "examples/b2-baselines/donchian_momentum/package"
+  },
   "stress_results": [
     {
+      "formula": "cost_component_multiplier",
+      "inputs_source": "cost_waterfall",
       "net_pnl": 20.8965160125,
       "scenario": "fees_x1_5",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
+      "formula": "cost_component_multiplier",
+      "inputs_source": "cost_waterfall",
       "net_pnl": 20.896510675,
       "scenario": "slippage_x2",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": 18.953198175,
+      "formula": "cost_component_multiplier",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 20.953198175,
       "scenario": "latency_x2",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": 18.896510675,
+      "formula": "cost_component_multiplier",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 20.896510675,
       "scenario": "depth_x0_5",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": 16.669760675,
+      "formula": "cost_component_multiplier",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 20.669760675,
       "scenario": "depth_x0_25",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": 17.009885675,
+      "formula": "cost_component_multiplier",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 21.009885675,
       "scenario": "maker_fill_probability_x0_5",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
+      "formula": "cost_component_multiplier",
+      "inputs_source": "cost_waterfall",
       "net_pnl": 21.009885675,
       "scenario": "funding_worst_decile",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": 11.009885675,
+      "formula": "worst_observed_oos_period_loss",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 20.41309392345262,
       "scenario": "exchange_outage",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": 11.009885675,
+      "formula": "worst_observed_oos_period_loss",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 20.41309392345262,
       "scenario": "missing_interval",
       "status": "pass",
       "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": -8.990114325,
+      "formula": "two_times_worst_observed_oos_period_loss",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 19.81630217190524,
       "scenario": "correlated_gap",
-      "status": "blocked",
-      "summary": "scenario is net negative and blocks promotion"
+      "status": "pass",
+      "summary": "scenario remains net positive"
     },
     {
-      "net_pnl": -18.990114325,
+      "formula": "maximum_oos_drawdown_segment",
+      "inputs_source": "cost_waterfall",
+      "net_pnl": 20.41309392345262,
       "scenario": "forced_deleverage",
-      "status": "blocked",
-      "summary": "scenario is net negative and blocks promotion"
+      "status": "pass",
+      "summary": "scenario remains net positive"
     }
   ],
   "validation": {

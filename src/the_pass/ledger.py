@@ -142,12 +142,31 @@ def verify_ledger_entries(entries: list[dict[str, Any]]) -> list[ValidationIssue
         if schema == LEDGER_SCHEMA_V2 and entry.get("entry_kind") not in {
             "run",
             "gate_decision",
+            "robustness_registration",
         }:
             issues.append(
                 ValidationIssue(
-                    f"{path}.entry_kind", "must be run or gate_decision for v2 entries"
+                    f"{path}.entry_kind", "must be run, gate_decision, or robustness_registration for v2 entries"
                 )
             )
+        if schema == LEDGER_SCHEMA_V2 and entry.get("entry_kind") == "robustness_registration":
+            if (
+                not isinstance(entry.get("events_fingerprint"), str)
+                or not isinstance(entry.get("descriptor_fingerprint"), str)
+                or not isinstance(entry.get("registration_fingerprint"), str)
+                or not isinstance(entry.get("attempt"), int)
+                or isinstance(entry.get("attempt"), bool)
+                or entry.get("attempt", 0) < 1
+                or not isinstance(entry.get("variant_count"), int)
+                or isinstance(entry.get("variant_count"), bool)
+                or entry.get("variant_count", 0) < 2
+            ):
+                issues.append(
+                    ValidationIssue(
+                        path,
+                        "robustness registration requires fingerprints, a positive attempt, and variant_count >= 2",
+                    )
+                )
 
         if entry.get("previous_hash") != previous_hash:
             issues.append(
@@ -184,6 +203,8 @@ def verify_ledger_artifacts(
         else Path.cwd().resolve()
     )
     for entry_index, entry in enumerate(entries):
+        if entry.get("entry_kind") == "robustness_registration":
+            continue
         entry_path = f"entry[{entry_index}]"
         package_value = entry.get("package_path")
         if not isinstance(package_value, str) or not package_value:
@@ -290,6 +311,30 @@ def verify_ledger_semantics(
         if entry.get("schema") != LEDGER_SCHEMA_V2:
             continue
         entry_path = f"entry[{index}]"
+        if entry.get("entry_kind") == "robustness_registration":
+            key = (
+                entry.get("events_fingerprint"),
+                entry.get("descriptor_fingerprint"),
+            )
+            expected_attempt = 1 + sum(
+                item.get("entry_kind") == "robustness_registration"
+                and (
+                    item.get("events_fingerprint"),
+                    item.get("descriptor_fingerprint"),
+                )
+                == key
+                for item in trusted_entries
+            )
+            if entry.get("attempt") != expected_attempt:
+                issues.append(
+                    ValidationIssue(
+                        f"{entry_path}.attempt",
+                        "must increment cumulatively for the events and descriptor key",
+                    )
+                )
+                continue
+            trusted_entries.append(entry)
+            continue
         package_dir = (ledger_parent / str(entry.get("package_path", ""))).resolve()
         if entry.get("entry_kind") == "run":
             try:
@@ -427,6 +472,65 @@ def verify_ledger_semantics(
             continue
         trusted_entries.append(entry)
     return issues
+
+
+def append_robustness_registration(
+    ledger_path: Path,
+    *,
+    events_fingerprint: str,
+    descriptor_fingerprint: str,
+    registration_fingerprint: str,
+    variant_count: int,
+    recorded_at: str | None = None,
+    _locked_handle: BinaryIO | None = None,
+) -> LedgerAppendResult:
+    """Append a holdout-burn receipt and return its cumulative attempt number."""
+
+    ledger_path = ledger_path.resolve()
+    if _locked_handle is None:
+        with locked_ledger(ledger_path) as handle:
+            return append_robustness_registration(
+                ledger_path,
+                events_fingerprint=events_fingerprint,
+                descriptor_fingerprint=descriptor_fingerprint,
+                registration_fingerprint=registration_fingerprint,
+                variant_count=variant_count,
+                recorded_at=recorded_at,
+                _locked_handle=handle,
+            )
+    if (
+        isinstance(variant_count, bool)
+        or not isinstance(variant_count, int)
+        or variant_count < 2
+    ):
+        raise LedgerError("robustness registration variant_count must be at least two")
+    entries = read_ledger_entries(ledger_path)
+    issues = verify_ledger_file(ledger_path) if ledger_path.exists() else []
+    if issues:
+        details = "; ".join(f"{issue.path}: {issue.message}" for issue in issues)
+        raise LedgerError(f"refusing to append to invalid ledger: {details}")
+    key_matches = [
+        entry
+        for entry in entries
+        if entry.get("schema") == LEDGER_SCHEMA_V2
+        and entry.get("entry_kind") == "robustness_registration"
+        and entry.get("events_fingerprint") == events_fingerprint
+        and entry.get("descriptor_fingerprint") == descriptor_fingerprint
+    ]
+    entry = {
+        "schema": LEDGER_SCHEMA_V2,
+        "entry_kind": "robustness_registration",
+        "recorded_at": recorded_at or utc_now_iso(),
+        "events_fingerprint": events_fingerprint,
+        "descriptor_fingerprint": descriptor_fingerprint,
+        "registration_fingerprint": registration_fingerprint,
+        "variant_count": variant_count,
+        "attempt": len(key_matches) + 1,
+        "previous_hash": entries[-1]["entry_hash"] if entries else None,
+    }
+    entry["entry_hash"] = hash_entry(entry)
+    append_locked_entry(_locked_handle, entry)
+    return LedgerAppendResult(entry, True, "robustness registration appended")
 
 
 def package_relative_path(package_dir: Path, path: Path) -> str:
@@ -594,7 +698,7 @@ def build_run_entry(
 ) -> dict[str, Any]:
     package_dir = package_dir.resolve()
     ledger_path = (ledger_path or DEFAULT_LEDGER_PATH).resolve()
-    result = validate_package(package_dir)
+    result = validate_package(package_dir, ledger_path=ledger_path)
     if not result.ok:
         details = "; ".join(f"{issue.path}: {issue.message}" for issue in result.issues)
         raise LedgerError(f"cannot add invalid package: {details}")

@@ -20,7 +20,7 @@
   "limitations": [
     "synthetic fixture cannot establish market edge"
   ],
-  "reviewer": "stats_auditor",
+  "reviewer": "fixture_stats_auditor",
   "schema_version": 2,
   "target": "examples/b2-baselines/donchian_momentum/package",
   "verdict": "blocked"

@@ -79,6 +79,12 @@ def lag1_autocorrelation(values: Sequence[float]) -> float:
 
 
 def effective_sample_size(values: Sequence[float]) -> dict[str, float]:
+    """Estimate sample size from lag-1 autocorrelation only.
+
+    This intentionally captures only the AR(1)-style lag-1 structure; longer
+    lag structure remains outside this diagnostic.
+    """
+
     sample = _array(values)
     correlation = lag1_autocorrelation(sample)
     effective = len(sample) * (1 - correlation) / (1 + correlation)
@@ -126,12 +132,20 @@ def deflated_sharpe_ratio(
     *,
     trial_sharpes: Sequence[float],
     effective_observations: float | None = None,
+    effective_trial_count: int | None = None,
 ) -> float:
     from scipy.stats import norm
 
     trials = _array(trial_sharpes)
-    count = len(trials)
-    if count < 2:
+    observed_count = len(trials)
+    count = observed_count if effective_trial_count is None else effective_trial_count
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise ValueError("effective_trial_count must be an integer")
+    if count < observed_count or count < 2:
+        raise ValueError(
+            "effective_trial_count must be at least the number of tried variants"
+        )
+    if observed_count < 2:
         raise ValueError("DSR requires at least two tried variants")
     trial_std = float(trials.std(ddof=1))
     euler_gamma = 0.5772156649015329
@@ -144,6 +158,48 @@ def deflated_sharpe_ratio(
         benchmark_sharpe=expected_max,
         effective_observations=effective_observations,
     )
+
+
+def mean_difference_permutation_pvalue(
+    selected: Sequence[float],
+    baseline: Sequence[float],
+    *,
+    samples: int = 2000,
+    seed: int = 7,
+) -> dict[str, float | int]:
+    """One-sided paired circular-block sign-flip randomization test."""
+
+    try:
+        import numpy as np
+    except ImportError as exc:
+        raise RuntimeError("permutation test requires the 'research' extra") from exc
+    selected_array = _array(selected)
+    baseline_array = _array(baseline)
+    if len(selected_array) != len(baseline_array):
+        raise ValueError("selected and baseline returns must be aligned")
+    if samples <= 0:
+        raise ValueError("permutation samples must be positive")
+    differences = selected_array - baseline_array
+    observed = float(differences.mean())
+    block_length = max(1, math.ceil(len(differences) ** (1 / 3)))
+    block_count = math.ceil(len(differences) / block_length)
+    generator = np.random.default_rng(seed)
+    exceedances = 0
+    for _ in range(samples):
+        offset = int(generator.integers(0, len(differences)))
+        block_signs = generator.choice((-1.0, 1.0), size=block_count)
+        signs = np.empty(len(differences), dtype=float)
+        for position in range(len(differences)):
+            circular_position = (position - offset) % len(differences)
+            signs[position] = block_signs[
+                min(circular_position // block_length, block_count - 1)
+            ]
+        if float((differences * signs).mean()) >= observed:
+            exceedances += 1
+    return {
+        "pvalue": float((1 + exceedances) / (samples + 1)),
+        "block_length": block_length,
+    }
 
 
 def select_train_winner(
@@ -250,7 +306,7 @@ def reality_check(
     *,
     bootstrap_samples: int = 500,
     seed: int = 7,
-) -> dict[str, float]:
+) -> dict[str, float | int]:
     try:
         import numpy as np
     except ImportError as exc:
@@ -263,17 +319,29 @@ def reality_check(
     centered = matrix - observed_means
     standard_errors = matrix.std(axis=0, ddof=1) / math.sqrt(matrix.shape[0])
     observed_spa = float(max((observed_means[index] / standard_errors[index] for index in range(matrix.shape[1]) if standard_errors[index] > 0), default=0.0))
+    block_length = max(1, math.ceil(matrix.shape[0] ** (1 / 3)))
     generator = np.random.default_rng(seed)
     maxima = []
     spa_maxima = []
     for _ in range(bootstrap_samples):
-        indexes = generator.integers(0, matrix.shape[0], size=matrix.shape[0])
+        indexes: list[int] = []
+        while len(indexes) < matrix.shape[0]:
+            start = int(generator.integers(0, matrix.shape[0]))
+            indexes.extend(
+                (start + offset) % matrix.shape[0]
+                for offset in range(block_length)
+            )
+        indexes = indexes[: matrix.shape[0]]
         sample_means = centered[indexes].mean(axis=0)
         maxima.append(float(sample_means.max()))
         spa_maxima.append(float(max((sample_means[index] / standard_errors[index] for index in range(matrix.shape[1]) if standard_errors[index] > 0), default=0.0)))
     reality_p = (1 + sum(value >= observed_max for value in maxima)) / (bootstrap_samples + 1)
     spa_p = (1 + sum(value >= observed_spa for value in spa_maxima)) / (bootstrap_samples + 1)
-    return {"reality_check_pvalue": float(reality_p), "spa_pvalue": float(spa_p)}
+    return {
+        "reality_check_pvalue": float(reality_p),
+        "spa_pvalue": float(spa_p),
+        "block_length": block_length,
+    }
 
 
 def sensitivity_report(

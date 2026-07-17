@@ -8,6 +8,7 @@
     "id",
     "created_at",
     "source_package_id",
+    "evidence_binding",
     "registration",
     "status",
     "cells",
@@ -34,6 +35,7 @@
         { "type": "string", "pattern": "^pkg_[A-Fa-f0-9]{24}$" }
       ]
     },
+    "evidence_binding": { "enum": ["runtime_receipts", "unverified_cells"] },
     "registration": {
       "type": "object",
       "required": [
@@ -67,6 +69,22 @@
         "tie_break": { "const": "lowest_variant_index" },
         "selection_policy": { "type": "string", "minLength": 1 },
         "registration_fingerprint": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "ledger_registration": {
+      "type": "object",
+      "required": ["ledger_path", "entry_hash", "attempt", "effective_trial_count"],
+      "properties": {
+        "ledger_path": { "type": ["string", "null"] },
+        "entry_hash": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+          ]
+        },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "effective_trial_count": { "type": "integer", "minimum": 2 }
       },
       "additionalProperties": false
     },
@@ -175,13 +193,26 @@
         "dsr": { "type": "number", "minimum": 0, "maximum": 1 },
         "reality_check": {
           "type": "object",
-          "required": ["reality_check_pvalue", "spa_pvalue"],
+          "required": ["reality_check_pvalue", "spa_pvalue", "block_length"],
           "properties": {
             "reality_check_pvalue": { "type": "number", "minimum": 0, "maximum": 1 },
-            "spa_pvalue": { "type": "number", "minimum": 0, "maximum": 1 }
+            "spa_pvalue": { "type": "number", "minimum": 0, "maximum": 1 },
+            "block_length": { "type": "integer", "minimum": 1 }
           },
           "additionalProperties": false
-        }
+        },
+        "thresholds": {
+          "type": "object",
+          "required": ["maximum_pbo", "minimum_dsr", "maximum_reality_check_pvalue", "policy_sha256"],
+          "properties": {
+            "maximum_pbo": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minimum_dsr": { "type": "number", "minimum": 0, "maximum": 1 },
+            "maximum_reality_check_pvalue": { "type": "number", "minimum": 0, "maximum": 1 },
+            "policy_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+          },
+          "additionalProperties": false
+        },
+        "effective_trial_count": { "type": "integer", "minimum": 2 }
       },
       "additionalProperties": false
     },
@@ -239,6 +270,10 @@
         "status",
         "selected_mean_return",
         "baseline_mean_return",
+        "pvalue",
+        "block_length",
+        "test",
+        "structure",
         "summary"
       ],
       "properties": {
@@ -246,6 +281,30 @@
         "status": { "enum": ["pass", "blocked"] },
         "selected_mean_return": { "type": "number" },
         "baseline_mean_return": { "type": "number" },
+        "pvalue": { "type": "number", "minimum": 0, "maximum": 1 },
+        "block_length": { "type": "integer", "minimum": 1 },
+        "test": { "type": "string", "minLength": 1 },
+        "structure": {
+          "type": "object",
+          "required": ["status", "check", "tolerance", "diagnostic", "limitation"],
+          "properties": {
+            "status": { "enum": ["pass", "blocked"] },
+            "check": { "type": "string", "minLength": 1 },
+            "tolerance": { "type": ["number", "null"] },
+            "diagnostic": {
+              "type": "object",
+              "required": ["check", "tolerance", "status"],
+              "properties": {
+                "check": { "type": "string", "minLength": 1 },
+                "tolerance": { "type": ["number", "null"] },
+                "status": { "enum": ["pass", "blocked"] }
+              },
+              "additionalProperties": false
+            },
+            "limitation": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
         "summary": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
@@ -260,9 +319,26 @@
           "status": { "enum": ["pass", "blocked"] },
           "net_pnl": { "type": "number" },
           "summary": { "type": "string", "minLength": 1 }
+          ,"inputs_source": { "enum": ["caller", "cost_waterfall"] }
+          ,"formula": { "type": "string", "minLength": 1 }
         },
         "additionalProperties": false
       }
+    },
+    "stress_evidence": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["source_package_path", "source_package_id", "cost_waterfall_sha256"],
+          "properties": {
+            "source_package_path": { "type": "string", "minLength": 1 },
+            "source_package_id": { "type": "string", "pattern": "^pkg_[A-Fa-f0-9]{24}$" },
+            "cost_waterfall_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "parameter_stability": {
       "type": "object",

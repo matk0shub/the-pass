@@ -1,0 +1,10 @@
+{
+  "grade": "fixture",
+  "operator_registry_locations": [
+    "config/reviewer-registry.yaml",
+    "config/reviewer-registry/"
+  ],
+  "reviewer_independence_established": false,
+  "schema_version": 1,
+  "statement": "fixture-grade attestations \u2014 reviewer independence NOT established"
+}

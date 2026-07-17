@@ -19,7 +19,7 @@
   "limitations": [
     "no venue archive or order-book replay"
   ],
-  "reviewer": "execution_skeptic",
+  "reviewer": "fixture_execution_skeptic",
   "schema_version": 2,
   "target": "examples/b2-baselines/donchian_momentum/package",
   "verdict": "blocked"

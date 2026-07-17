@@ -20,7 +20,7 @@ global:
     severe_depth_multiple: 0.25
     maker_fill_probability_multiple: 0.5
     funding_window: worst_decile
-    scenarios: [exchange_outage, missing_interval, correlated_gap, forced_deleverage]
+    scenarios: [fees_x1_5, slippage_x2, latency_x2, depth_x0_5, depth_x0_25, maker_fill_probability_x0_5, funding_worst_decile, exchange_outage, missing_interval, correlated_gap, forced_deleverage]
 asset_classes:
   crypto_intraday:
     minimum_history_months_screen: 12
@@ -29,9 +29,10 @@ asset_classes:
     minimum_trades_intraday: 500
     minimum_trades_4h_plus: 100
     minimum_oos_net_sharpe: 1.0
-    minimum_dsr_or_psr: positive_vs_zero_after_multiple_tests
+    minimum_dsr: 0.95  # Probabilistic deflated Sharpe ratio in [0, 1].
     maximum_pbo: 0.10
-    stress: [fees_x1_5, slippage_x2, latency_x2, fill_rate_x0_7]
+    maximum_reality_check_pvalue: 0.10
+    stress: [fees_x1_5, slippage_x2, latency_x2, depth_x0_5, depth_x0_25, maker_fill_probability_x0_5, funding_worst_decile, exchange_outage, missing_interval, correlated_gap, forced_deleverage]
     drawdown: max_historical_drawdown_le_2x_expected_annualized_net_return_or_risk_officer_exception
     paper: 30_calendar_days_and_100_fills_or_500_signals_costs_within_25_percent_no_unresolved_outage
   crypto_funding:

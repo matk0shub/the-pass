@@ -1,0 +1,33 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "evidence": {
+    "state_after_sha256": "28488788cb27b01133a660d911784e9f0401de7bcf250988ad8be52934535b4a",
+    "state_before_sha256": "81a43e76ecd4c271ee10a01ad2f2e22bc846b2375d45c74d967e2836b2d4c2f6",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "task_sha256": "907fc832d534369f4a204335c828413393e9a3e67d88fcc4ee9a6eec941009a8"
+  },
+  "gate_id": "research_gate",
+  "id": "att_research_gate_4d49e7573d3ed8aa992b4ee9_2139521b",
+  "package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
+  "principal": {
+    "model": "independent-v3-review",
+    "provider": "fixture_provider",
+    "run_id": "v3-research_gate-review",
+    "type": "provider"
+  },
+  "reviewer": "fixture_stats_auditor",
+  "schema_version": 2,
+  "separation": {
+    "author_provider": "codex",
+    "reviewer_provider": "fixture_provider"
+  },
+  "signature": "avH9gsjGGJnGN/mQQCQW7mRJcdo0TdgiSNXbumcZTFjXmA+pdwI5koYHhOrObxRpkqOX3ooU6mV59z9WEvVsBg==",
+  "signature_algorithm": "ed25519",
+  "signer": {
+    "key_id": "key_2139521b63ef9f16",
+    "public_key": "W2uAbvINzPOTdMWzGnd152tUFNOw/mLOvp7EqpbbvK8=",
+    "registry_fingerprint": "c86a396b7ff1333dad58b1226009bd4439502ff5a7319c8fe109c8f11ae0b315",
+    "registry_id": "v3-research_gate-reviewers"
+  }
+}

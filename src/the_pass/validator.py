@@ -557,14 +557,22 @@ def detect_artifact_type(path: Path, document: Any) -> str | None:
 
 
 def validate_workflow_artifact(
-    artifact_type: str, document: dict[str, Any]
+    artifact_type: str,
+    document: dict[str, Any],
+    *,
+    ledger_path: Path | None = None,
+    artifact_path: Path | None = None,
 ) -> list[ValidationIssue]:
     """Check workflow invariants that are awkward or unclear in JSON Schema."""
 
     issues: list[ValidationIssue] = []
 
     if artifact_type == "robustness_report" and document.get("schema_version") == 3:
-        return validate_robustness_report_v3(document)
+        return validate_robustness_report_v3(
+            document,
+            ledger_path=ledger_path,
+            artifact_path=artifact_path,
+        )
 
     if artifact_type == "run_receipt":
         lineage_fields = (
@@ -928,19 +936,9 @@ def validate_workflow_artifact(
                         )
                     )
 
-        mandatory_stress = {
-            "fees_x1_5",
-            "slippage_x2",
-            "latency_x2",
-            "depth_x0_5",
-            "depth_x0_25",
-            "maker_fill_probability_x0_5",
-            "funding_worst_decile",
-            "exchange_outage",
-            "missing_interval",
-            "correlated_gap",
-            "forced_deleverage",
-        }
+        from .robustness import MANDATORY_STRESS_SCENARIOS
+
+        mandatory_stress = set(MANDATORY_STRESS_SCENARIOS)
         stress_names = {
             row["scenario"] for row in document["stress_results"]
         }
@@ -1068,6 +1066,9 @@ def validate_workflow_artifact(
 
 def validate_robustness_report_v3(
     document: dict[str, Any],
+    *,
+    ledger_path: Path | None = None,
+    artifact_path: Path | None = None,
 ) -> list[ValidationIssue]:
     """Recompute train selection and all OOS robustness evidence."""
 
@@ -1076,9 +1077,13 @@ def validate_robustness_report_v3(
         cscv_pbo,
         deflated_sharpe_ratio,
         effective_sample_size,
+        MANDATORY_STRESS_SCENARIOS,
+        mean_difference_permutation_pvalue,
         probabilistic_sharpe_ratio_effective,
         reality_check,
+        run_stress_suite,
         select_train_winner,
+        stress_parameters_from_cost_waterfall,
     )
 
     issues: list[ValidationIssue] = []
@@ -1128,7 +1133,147 @@ def validate_robustness_report_v3(
                 "must identify a non-null registered variant",
             )
         )
+    null_variant = variants[null_index] if 0 <= null_index < variant_count else {}
+    null_kind = null_variant.get("kind") if isinstance(null_variant, dict) else None
+    structural_null_valid = (
+        isinstance(null_variant, dict)
+        and null_variant.get("role") == "null"
+        and null_kind in {"flat", "seeded_random"}
+    )
+    if not structural_null_valid:
+        issues.append(
+            ValidationIssue(
+                "$.registration.variants",
+                "null variant must declare role=null and kind=flat or seeded_random",
+            )
+        )
+    elif null_kind == "seeded_random":
+        seed = null_variant.get("seed")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            structural_null_valid = False
+            issues.append(
+                ValidationIssue(
+                    f"$.registration.variants[{null_index}].seed",
+                    "seeded_random null variant requires an integer seed",
+                )
+            )
+        reference_variant = variants[reference_index]
+        metadata = {"role", "kind", "seed"}
+        overlap = (set(null_variant) - metadata) & (
+            set(reference_variant) - metadata
+        )
+        if overlap:
+            structural_null_valid = False
+            issues.append(
+                ValidationIssue(
+                    f"$.registration.variants[{null_index}]",
+                    "seeded_random null variant shares strategy keys with the reference variant: "
+                    + ", ".join(sorted(overlap)),
+                )
+            )
+        issues.append(
+            ValidationIssue(
+                f"$.registration.variants[{null_index}]",
+                "seeded_random is diagnostic only and cannot support promotion until a trusted framework-side generator exists",
+                "warning",
+            )
+        )
 
+    policy_path = (
+        Path(__file__).resolve().parent / "policies" / "risk-policies.v1.yaml"
+    )
+    policy_bytes = policy_path.read_bytes()
+    policy = yaml.safe_load(policy_bytes)
+    policy_values = policy["asset_classes"]["crypto_intraday"]
+    packaged_thresholds = {
+        "maximum_pbo": float(policy_values["maximum_pbo"]),
+        "minimum_dsr": float(policy_values["minimum_dsr"]),
+        "maximum_reality_check_pvalue": float(
+            policy_values["maximum_reality_check_pvalue"]
+        ),
+        "policy_sha256": hashlib.sha256(policy_bytes).hexdigest(),
+    }
+    reported_thresholds = document["statistics"]["thresholds"]
+    policy_binding_valid = reported_thresholds == packaged_thresholds
+    if document.get("promotion_eligible") is True and not policy_binding_valid:
+        issues.append(
+            ValidationIssue(
+                "$.statistics.thresholds.policy_sha256",
+                "promotion requires the packaged risk policy fingerprint and thresholds",
+            )
+        )
+
+    ledger_registration = document.get("ledger_registration")
+    reported_attempt = (
+        ledger_registration.get("attempt", 1)
+        if isinstance(ledger_registration, dict)
+        else 1
+    )
+    ledger_attempt: int | None = None
+    effective_trial_count = variant_count
+    ledger_registration_valid = ledger_path is None
+    requires_ledger = (
+        document.get("promotion_eligible") is True and ledger_path is not None
+    )
+    if requires_ledger:
+        from .ledger import LedgerError, read_ledger_entries, verify_ledger_entries
+
+        try:
+            operator_entries = read_ledger_entries(ledger_path)
+        except (OSError, ValueError, LedgerError) as exc:
+            operator_entries = []
+            ledger_issues = [ValidationIssue(str(ledger_path), str(exc))]
+        else:
+            ledger_issues = verify_ledger_entries(operator_entries)
+        if ledger_issues:
+            issues.extend(
+                ValidationIssue(
+                    f"$.ledger_registration.{issue.path}", issue.message
+                )
+                for issue in ledger_issues
+            )
+        else:
+            matching = [
+                entry
+                for entry in operator_entries
+                if entry.get("entry_kind") == "robustness_registration"
+                and entry.get("events_fingerprint")
+                == registration.get("events_fingerprint")
+                and entry.get("descriptor_fingerprint")
+                == registration.get("descriptor_fingerprint")
+            ]
+            if matching:
+                latest = matching[-1]
+                ledger_attempt = int(latest["attempt"])
+                effective_trial_count = sum(
+                    int(entry["variant_count"]) for entry in matching
+                )
+                receipt = next(
+                    (
+                        entry
+                        for entry in matching
+                        if entry.get("registration_fingerprint")
+                        == registration.get("registration_fingerprint")
+                        and entry.get("attempt") == reported_attempt
+                    ),
+                    None,
+                )
+                ledger_registration_valid = (
+                    receipt is not None
+                    and isinstance(ledger_registration, dict)
+                    and ledger_registration.get("entry_hash")
+                    == receipt.get("entry_hash")
+                    and reported_attempt == ledger_attempt
+                    and ledger_registration.get("effective_trial_count")
+                    == effective_trial_count
+                )
+            if not ledger_registration_valid:
+                issues.append(
+                    ValidationIssue(
+                        "$.ledger_registration",
+                        "must match the latest ledger-backed registration attempt for the events and descriptor key",
+                    )
+                )
     folds = document["validation"]["folds"]
     for index, fold in enumerate(folds):
         if fold["id"] != index:
@@ -1421,6 +1566,7 @@ def validate_robustness_report_v3(
         and len(selected_oos_returns) >= 4
         and bool(expected_matrix)
     )
+    expected_statistics = document["statistics"]
     if complete_statistics:
         expected_sample = effective_sample_size(selected_oos_returns)
         if document["sample"] != expected_sample:
@@ -1455,12 +1601,15 @@ def validate_robustness_report_v3(
                 effective_observations=expected_sample[
                     "effective_observations"
                 ],
+                effective_trial_count=effective_trial_count,
             ),
             "reality_check": reality_check(
                 expected_matrix,
                 bootstrap_samples=500,
                 seed=7,
             ),
+            "thresholds": reported_thresholds,
+            "effective_trial_count": effective_trial_count,
         }
         if document["statistics"] != expected_statistics:
             issues.append(
@@ -1489,9 +1638,73 @@ def validate_robustness_report_v3(
         if null_oos_returns
         else 0.0
     )
+    if null_kind == "flat":
+        null_cells = [
+            cell
+            for cell in cells
+            if cell["variant_index"] == null_index
+        ]
+        null_cell_means = [
+            sum(float(value) for value in cell["periodic_returns"])
+            / len(cell["periodic_returns"])
+            for cell in null_cells
+            if cell["status"] == "complete" and cell["periodic_returns"]
+        ]
+        diagnostic_passed = (
+            "pass"
+            if structural_null_valid
+            and bool(null_cell_means)
+            and len(null_cell_means) == len(null_cells)
+            and all(abs(value) <= 1e-12 for value in null_cell_means)
+            else "blocked"
+        )
+        exact_passed = structural_null_valid and bool(null_cells) and all(
+            cell["status"] == "complete"
+            and bool(cell["periodic_returns"])
+            and all(float(value) == 0.0 for value in cell["periodic_returns"])
+            for cell in null_cells
+        )
+        null_structure_status = "pass" if exact_passed else "blocked"
+        expected_structure = {
+            "status": null_structure_status,
+            "check": "every_complete_cell_periodic_return_exactly_zero",
+            "tolerance": 0.0,
+            "diagnostic": {
+                "check": "each_cell_mean_net_return_near_zero",
+                "tolerance": 1e-12,
+                "status": diagnostic_passed,
+            },
+            "limitation": "the tolerance check is diagnostic only; promotion requires every periodic return to equal exactly 0.0",
+        }
+    else:
+        null_structure_status = "blocked"
+        expected_structure = {
+            "status": null_structure_status,
+            "check": "seed_registered_and_strategy_keys_disjoint_from_reference",
+            "tolerance": None,
+            "diagnostic": {
+                "check": "registered_seed_and_disjoint_strategy_keys",
+                "tolerance": None,
+                "status": "pass" if structural_null_valid else "blocked",
+            },
+            "limitation": "seeded_random nulls are diagnostic only and cannot support promotion until a trusted framework-side generator exists",
+        }
+    null_test = (
+        mean_difference_permutation_pvalue(
+            selected_oos_returns,
+            null_oos_returns,
+            samples=2000,
+            seed=7,
+        )
+        if complete_statistics
+        else {"pvalue": 1.0, "block_length": 1}
+    )
+    null_pvalue = float(null_test["pvalue"])
     null_status = (
         "pass"
-        if complete_statistics and selected_mean > null_mean
+        if complete_statistics
+        and null_structure_status == "pass"
+        and null_pvalue <= 0.10
         else "blocked"
     )
     baseline = document["null_baseline"]
@@ -1509,12 +1722,22 @@ def validate_robustness_report_v3(
             rel_tol=1e-12,
             abs_tol=1e-15,
         )
+        or not math.isclose(
+            baseline.get("pvalue", -1),
+            null_pvalue,
+            rel_tol=1e-12,
+            abs_tol=1e-15,
+        )
+        or baseline.get("test")
+        != "paired_one_sided_circular_block_sign_flip_mean_difference"
+        or baseline.get("block_length") != null_test["block_length"]
+        or baseline.get("structure") != expected_structure
         or baseline["status"] != null_status
     ):
         issues.append(
             ValidationIssue(
                 "$.null_baseline",
-                "must compare train-selected OOS returns with the aligned null variant",
+                "must statistically compare aligned OOS returns and verify the structural null",
             )
         )
 
@@ -1555,19 +1778,7 @@ def validate_robustness_report_v3(
             )
         )
 
-    mandatory_stress = {
-        "fees_x1_5",
-        "slippage_x2",
-        "latency_x2",
-        "depth_x0_5",
-        "depth_x0_25",
-        "maker_fill_probability_x0_5",
-        "funding_worst_decile",
-        "exchange_outage",
-        "missing_interval",
-        "correlated_gap",
-        "forced_deleverage",
-    }
+    mandatory_stress = set(MANDATORY_STRESS_SCENARIOS)
     stress_names = {
         row["scenario"] for row in document["stress_results"]
     }
@@ -1578,14 +1789,235 @@ def validate_robustness_report_v3(
                 "stress scenario names must be unique",
             )
         )
+    cost_sourced = bool(document["stress_results"]) and all(
+        row.get("inputs_source") == "cost_waterfall"
+        for row in document["stress_results"]
+    )
+    stress_recomputed = False
+    if cost_sourced:
+        evidence = document.get("stress_evidence")
+        if not isinstance(evidence, dict):
+            issues.append(
+                ValidationIssue(
+                    "$.stress_evidence",
+                    "cost-waterfall stress rows require source package evidence",
+                )
+            )
+        else:
+            source_value = Path(evidence["source_package_path"])
+            source_package = (
+                source_value.resolve()
+                if source_value.is_absolute()
+                else (repo_root_from(artifact_path) / source_value).resolve()
+            )
+            cost_path = source_package / "cost_waterfall.json"
+            same_source_package = (
+                artifact_path is not None and source_package == artifact_path.parent
+            )
+            if same_source_package:
+                issues.append(
+                    ValidationIssue(
+                        "$.stress_evidence.source_package_path",
+                        "stress source package must be separate from the robustness report package",
+                    )
+                )
+                cost_sourced = False
+            try:
+                cost_bytes = cost_path.read_bytes()
+                cost_document = json.loads(cost_bytes)
+            except (OSError, json.JSONDecodeError) as exc:
+                issues.append(
+                    ValidationIssue(
+                        "$.stress_evidence.source_package_path",
+                        f"cannot read source cost waterfall: {exc}",
+                    )
+                )
+            else:
+                stress_source_bound = False
+                expected_hash = hashlib.sha256(cost_bytes).hexdigest()
+                if evidence.get("cost_waterfall_sha256") != expected_hash:
+                    issues.append(
+                        ValidationIssue(
+                            "$.stress_evidence.cost_waterfall_sha256",
+                            "does not match source package cost evidence",
+                        )
+                    )
+                try:
+                    from .ledger import LedgerError, build_run_entry
+
+                    if same_source_package:
+                        raise ValueError("stress source is the report package")
+                    source_entry = build_run_entry(source_package)
+                    run_receipt = load_document(source_package / "run_receipt.json")
+                    linked_cost = (
+                        source_package
+                        / str(run_receipt.get("outputs", {}).get("cost_waterfall", ""))
+                    ).resolve()
+                    linked_receipt = (
+                        source_package / str(cost_document.get("run_receipt", ""))
+                    ).resolve()
+                    stress_source_bound = (
+                        source_entry.get("package_id")
+                        == document.get("source_package_id")
+                        == evidence.get("source_package_id")
+                        and linked_cost == cost_path.resolve()
+                        and linked_receipt
+                        == (source_package / "run_receipt.json").resolve()
+                    )
+                except (OSError, ValueError, TypeError, KeyError, LedgerError) as exc:
+                    issues.append(
+                        ValidationIssue(
+                            "$.stress_evidence.source_package_id",
+                            f"cannot verify source package identity: {exc}",
+                        )
+                    )
+                    stress_source_bound = False
+                if not stress_source_bound:
+                    issues.append(
+                        ValidationIssue(
+                            "$.stress_evidence.source_package_id",
+                            "cost waterfall and run receipt must bind the report source_package_id",
+                        )
+                    )
+                expected_rows = [
+                    {
+                        key: row[key]
+                        for key in (
+                            "scenario",
+                            "status",
+                            "net_pnl",
+                            "summary",
+                            "inputs_source",
+                            "formula",
+                        )
+                    }
+                    for row in run_stress_suite(
+                        stress_parameters_from_cost_waterfall(
+                            cost_document, selected_oos_returns
+                        )
+                    )
+                ]
+                if document["stress_results"] != expected_rows:
+                    issues.append(
+                        ValidationIssue(
+                            "$.stress_results",
+                            "does not match recomputation from the source cost waterfall and selected OOS returns",
+                        )
+                    )
+                elif (
+                    evidence.get("cost_waterfall_sha256") == expected_hash
+                    and stress_source_bound
+                ):
+                    stress_recomputed = True
+    elif document.get("promotion_eligible") is True:
+        issues.append(
+            ValidationIssue(
+                "$.stress_results",
+                "promotion-eligible reports cannot use caller-sourced stress rows",
+            )
+        )
+
+    recomputed_pbo = (
+        expected_statistics["pbo"]["pbo"] if complete_statistics else 1.0
+    )
+    recomputed_dsr = expected_statistics["dsr"] if complete_statistics else 0.0
+    recomputed_reality_pvalue = (
+        expected_statistics["reality_check"]["reality_check_pvalue"]
+        if complete_statistics
+        else 1.0
+    )
+    threshold_conditions = (
+        recomputed_pbo <= packaged_thresholds["maximum_pbo"]
+        and recomputed_dsr >= packaged_thresholds["minimum_dsr"]
+        and recomputed_reality_pvalue
+        <= packaged_thresholds["maximum_reality_check_pvalue"]
+    )
+    if document.get("promotion_eligible") is True:
+        if recomputed_pbo > packaged_thresholds["maximum_pbo"]:
+            issues.append(
+                ValidationIssue(
+                    "$.promotion_eligible",
+                    f"cannot be true: recomputed PBO {recomputed_pbo:.12g} exceeds policy maximum {packaged_thresholds['maximum_pbo']:.12g}",
+                )
+            )
+        if recomputed_dsr < packaged_thresholds["minimum_dsr"]:
+            issues.append(
+                ValidationIssue(
+                    "$.promotion_eligible",
+                    f"cannot be true: recomputed DSR {recomputed_dsr:.12g} is below policy minimum {packaged_thresholds['minimum_dsr']:.12g}",
+                )
+            )
+        if recomputed_reality_pvalue > packaged_thresholds["maximum_reality_check_pvalue"]:
+            issues.append(
+                ValidationIssue(
+                    "$.promotion_eligible",
+                    "cannot be true: recomputed Reality Check p-value "
+                    f"{recomputed_reality_pvalue:.12g} exceeds policy maximum "
+                    f"{packaged_thresholds['maximum_reality_check_pvalue']:.12g}",
+                )
+            )
+    evidence_binding = document.get("evidence_binding")
+    reproduction_binding_valid = False
+    if artifact_path is not None:
+        reproduction_path = artifact_path.resolve().parent / "reproduction_report.json"
+        try:
+            reproduction = load_document(reproduction_path)
+        except ArtifactValidationError:
+            reproduction = None
+        if isinstance(reproduction, dict) and reproduction.get("status") == "pass":
+            binding = reproduction.get("robustness_binding")
+            if isinstance(binding, dict):
+                binding_core = {
+                    key: value
+                    for key, value in binding.items()
+                    if key != "binding_fingerprint"
+                }
+                reproduction_binding_valid = (
+                    binding.get("binding_grade")
+                    == "reproduction_integrity_not_cell_provenance"
+                    and binding.get("binding_fingerprint")
+                    == stable_fingerprint(binding_core)
+                    and binding.get("registration_fingerprint")
+                    == registration.get("registration_fingerprint")
+                    and binding.get("events_fingerprint")
+                    == registration.get("events_fingerprint")
+                    and binding.get("statistics_fingerprint")
+                    == stable_fingerprint(expected_statistics)
+                    and binding.get("cells_fingerprint")
+                    == stable_fingerprint(cells)
+                    and binding.get("selected_oos_returns_fingerprint")
+                    == stable_fingerprint(selected_oos_returns)
+                )
+    evidence_binding_valid = (
+        evidence_binding == "unverified_cells" and reproduction_binding_valid
+    )
+    if evidence_binding == "runtime_receipts":
+        issues.append(
+            ValidationIssue(
+                "$.evidence_binding",
+                "runtime_receipts is unsupported: the current strategy runtime does not persist a verifiable per-cell receipt chain",
+            )
+        )
+    if document.get("promotion_eligible") is True and not evidence_binding_valid:
+        issues.append(
+            ValidationIssue(
+                "$.evidence_binding",
+                "promotion with unverified cells requires a passing sibling reproduction_report.json bound to the same registration, events, cells, returns, and recomputed statistics",
+            )
+        )
     promotion_conditions = (
         document["status"] == "complete"
         and document["validation"]["mode"] == "purged_walk_forward"
         and complete_statistics
         and expected_sample.get("effective_observations", 0) >= 30
+        and threshold_conditions
+        and policy_binding_valid
+        and null_kind == "flat"
         and null_status == "pass"
         and stability_status == "pass"
         and mandatory_stress <= stress_names
+        and cost_sourced
+        and stress_recomputed
         and all(
             row["status"] == "pass"
             for row in document["stress_results"]
@@ -1596,12 +2028,14 @@ def validate_robustness_report_v3(
             for cell in cells
         )
         and isinstance(document["source_package_id"], str)
+        and ledger_registration_valid
+        and evidence_binding_valid
     )
     if document["promotion_eligible"] != promotion_conditions:
         issues.append(
             ValidationIssue(
                 "$.promotion_eligible",
-                "must be derived from train-only selection, aligned OOS statistics, execution v2, stress, and runtime evidence",
+                "must be derived from policy-thresholded statistics, ledger-backed trials, structural null, evidence-derived stress, execution v2, and runtime evidence",
             )
         )
     return issues
@@ -1889,6 +2323,7 @@ def validate_artifact(
     *,
     schema_dir: Path | None = None,
     artifact_type: str | None = None,
+    ledger_path: Path | None = None,
 ) -> ValidationResult:
     issues: list[ValidationIssue] = []
     schema_dir = (schema_dir or default_schema_dir()).resolve()
@@ -1978,13 +2413,20 @@ def validate_artifact(
             "approval_pack",
             "receipt_summary",
         }:
-            issues.extend(validate_workflow_artifact(detected_type, document))
+            issues.extend(
+                validate_workflow_artifact(
+                    detected_type,
+                    document,
+                    ledger_path=ledger_path,
+                    artifact_path=artifact_path,
+                )
+            )
         elif detected_type == "agent_run":
             issues.extend(validate_agent_run_artifact(document, schema_dir, artifact_path))
 
     schema_id = schema.get("$id")
     return ValidationResult(
-        not issues,
+        not any(issue.severity == "error" for issue in issues),
         issues,
         detected_type,
         schema_id if isinstance(schema_id, str) else None,
@@ -2109,7 +2551,10 @@ def package_evidence_paths(package_dir: Path) -> list[tuple[str, Path]]:
 
 
 def validate_package(
-    package_dir: Path, *, schema_dir: Path | None = None
+    package_dir: Path,
+    *,
+    schema_dir: Path | None = None,
+    ledger_path: Path | None = None,
 ) -> ValidationResult:
     package_dir = package_dir.resolve()
     schema_dir = (schema_dir or default_schema_dir()).resolve()
@@ -2163,7 +2608,10 @@ def validate_package(
     documents: dict[str, dict[str, Any]] = {}
     for artifact_type, path in sorted(artifact_paths.items()):
         result = validate_artifact(
-            path, schema_dir=schema_dir, artifact_type=artifact_type
+            path,
+            schema_dir=schema_dir,
+            artifact_type=artifact_type,
+            ledger_path=ledger_path,
         )
         issues.extend(
             ValidationIssue(f"{path.name}:{issue.path}", issue.message)
@@ -2182,7 +2630,10 @@ def validate_package(
     promotion_documents: dict[str, dict[str, Any]] = {}
     for artifact_type, path in promotion_evidence:
         result = validate_artifact(
-            path, schema_dir=schema_dir, artifact_type=artifact_type
+            path,
+            schema_dir=schema_dir,
+            artifact_type=artifact_type,
+            ledger_path=ledger_path,
         )
         issues.extend(
             ValidationIssue(f"{path.name}:{issue.path}", issue.message)
@@ -2193,7 +2644,7 @@ def validate_package(
             if isinstance(loaded, dict):
                 promotion_documents[artifact_type] = loaded
 
-    if issues:
+    if any(issue.severity == "error" for issue in issues):
         return ValidationResult(False, issues, "package")
 
     receipt = documents["run_receipt"]
@@ -2903,4 +3354,8 @@ def validate_package(
                 )
             )
 
-    return ValidationResult(not issues, issues, "package")
+    return ValidationResult(
+        not any(issue.severity == "error" for issue in issues),
+        issues,
+        "package",
+    )

@@ -28,8 +28,8 @@
       "path": "run_receipt.json"
     },
     {
-      "expected": "ca90929c229f89e01ab2cf5c51ee9d31af2fbba294b73d35ecc8115bb757a2f2",
-      "observed": "ca90929c229f89e01ab2cf5c51ee9d31af2fbba294b73d35ecc8115bb757a2f2",
+      "expected": "548c8e9dea87933dc1959eeec4f6f894fde792e73ac4af8ba7fd699cacc5e2e9",
+      "observed": "548c8e9dea87933dc1959eeec4f6f894fde792e73ac4af8ba7fd699cacc5e2e9",
       "path": "metrics_report.json"
     },
     {
@@ -70,6 +70,15 @@
   ],
   "mismatches": [],
   "receipt_exit_code": 0,
+  "robustness_binding": {
+    "binding_fingerprint": "dedcf110e44c71ccf9e97112f9da8d94ac446abc0a01d9871e8ff5eb4bc2d4c8",
+    "binding_grade": "reproduction_integrity_not_cell_provenance",
+    "cells_fingerprint": "bb683138d3927e30cbdc166ad7ba5cb945b5b831d034a10273938fd1cb47b27a",
+    "events_fingerprint": "8e507c4ead58d2908cd6115852da41a31747d2d5f89d6cd1d7e18578819029d9",
+    "registration_fingerprint": "bb0cafcf731d0f1b1893e0ab3f3b9222dceb5c403dbe92f3b617a925185a174d",
+    "selected_oos_returns_fingerprint": "abca8e23bcfa4c5eec3499e523f7355b64213528f95746e242238cdc6a5b1c15",
+    "statistics_fingerprint": "f8aba30a869140d20488ed17fc80c36d1a17f2aef77073117947bdf90e74867c"
+  },
   "schema_version": 1,
   "status": "pass"
 }

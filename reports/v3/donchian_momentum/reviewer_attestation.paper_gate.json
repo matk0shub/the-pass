@@ -1,0 +1,33 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "evidence": {
+    "state_after_sha256": "28488788cb27b01133a660d911784e9f0401de7bcf250988ad8be52934535b4a",
+    "state_before_sha256": "81a43e76ecd4c271ee10a01ad2f2e22bc846b2375d45c74d967e2836b2d4c2f6",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "task_sha256": "bf57fce93ca9ca9c7bf0c16f35d229ce1d88fa787ca6ebe3ed5c4bf13dcfbba4"
+  },
+  "gate_id": "paper_gate",
+  "id": "att_paper_gate_4d49e7573d3ed8aa992b4ee9_e67ae420",
+  "package_id": "pkg_4d49e7573d3ed8aa992b4ee9",
+  "principal": {
+    "model": "independent-v3-review",
+    "provider": "fixture_human",
+    "run_id": "v3-paper_gate-review",
+    "type": "provider"
+  },
+  "reviewer": "fixture_execution_skeptic",
+  "schema_version": 2,
+  "separation": {
+    "author_provider": "codex",
+    "reviewer_provider": "fixture_human"
+  },
+  "signature": "UUGpSJLHrzqOeRK70j2N0qDQkfC2RRpjNHMyRrs+FfIANRl3YrB+s9GgySYjoiKKSeV5yGJEtzWLdshr6V5uBg==",
+  "signature_algorithm": "ed25519",
+  "signer": {
+    "key_id": "key_e67ae420bbe82eb5",
+    "public_key": "hjLKuqqcRoHlPMW/77pyvGDx4xK7QYYF9tbhkO2s1LI=",
+    "registry_fingerprint": "e3732aa675f7c35a992ee9f6439c2e9b8fe565b4000f0894824ea4753d4b6df8",
+    "registry_id": "v3-paper_gate-reviewers"
+  }
+}

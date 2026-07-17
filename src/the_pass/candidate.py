@@ -38,8 +38,12 @@ def _write_json_atomic(path: Path, document: dict[str, Any]) -> None:
         raise
 
 
-def _document(path: Path, *, artifact_type: str) -> dict[str, Any]:
-    validation = validate_artifact(path, artifact_type=artifact_type)
+def _document(
+    path: Path, *, artifact_type: str, ledger_path: Path | None = None
+) -> dict[str, Any]:
+    validation = validate_artifact(
+        path, artifact_type=artifact_type, ledger_path=ledger_path
+    )
     if not validation.ok:
         details = "; ".join(
             f"{issue.path}: {issue.message}" for issue in validation.issues
@@ -70,7 +74,9 @@ def assemble_research_candidate(
     target = target.resolve()
     source_entry = build_run_entry(source, ledger_path=ledger_path)
     robustness = _document(
-        robustness_report_path.resolve(), artifact_type="robustness_report"
+        robustness_report_path.resolve(),
+        artifact_type="robustness_report",
+        ledger_path=ledger_path,
     )
     if robustness.get("schema_version") != 3:
         raise CandidateAssemblyError(
@@ -180,7 +186,7 @@ def assemble_research_candidate(
         )
         _write_json_atomic(receipt_path, receipt)
 
-        validation = validate_package(target)
+        validation = validate_package(target, ledger_path=ledger_path)
         if not validation.ok:
             details = "; ".join(
                 f"{issue.path}: {issue.message}" for issue in validation.issues

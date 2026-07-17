@@ -305,7 +305,7 @@ def evaluate_gate(
     if reviewer != reviewer.strip():
         raise GateEvaluationError("reviewer must not contain leading or trailing whitespace")
 
-    package_validation = validate_package(package_dir)
+    package_validation = validate_package(package_dir, ledger_path=ledger_path)
     if not package_validation.ok:
         details = "; ".join(
             f"{issue.path}: {issue.message}" for issue in package_validation.issues
@@ -316,7 +316,7 @@ def evaluate_gate(
     if gate not in policy.get("gates", {}):
         raise GateEvaluationError(f"gate policy does not define {gate}")
 
-    run_entry = build_run_entry(package_dir)
+    run_entry = build_run_entry(package_dir, ledger_path=ledger_path)
     package_id = run_entry["package_id"]
     verdict_path, verdict, verdict_issues = workflow_artifact(
         package_dir, "verdict_report"

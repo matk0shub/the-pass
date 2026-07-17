@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-07-10T00:00:00Z",
+  "id": "v3-research_gate-reviewers",
+  "keys": [
+    {
+      "key_id": "key_2139521b63ef9f16",
+      "principal_type": "provider",
+      "provider": "fixture_provider",
+      "public_key": "W2uAbvINzPOTdMWzGnd152tUFNOw/mLOvp7EqpbbvK8=",
+      "reviewer": "fixture_stats_auditor",
+      "revoked_at": null,
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_until": "2036-01-01T00:00:00Z"
+    }
+  ],
+  "schema_version": 1
+}
